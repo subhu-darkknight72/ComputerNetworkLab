@@ -88,7 +88,6 @@ int main(int argc,char* argv[])
 		printf("Server2 Load: %d\n",l1);
 
 		if(l1<l0)	k=1;
-		
 		strcpy(buf,"kill");
 		sendStr(buf, sockfd_s[1-k]);
 
@@ -97,6 +96,7 @@ int main(int argc,char* argv[])
 		receiveStr(buf, sockfd_s[k]);
 
 		sendStr(buf, newsockfd);
+
 		receiveStr(buf, newsockfd);
 		printf("%s\n", buf);
 
@@ -105,6 +105,7 @@ int main(int argc,char* argv[])
 
 		strcpy(buf,"Message from client to Server-2");
 		sendStr(buf, sockfd_s[1]);
+		
 		close(newsockfd);
 	}
 	close(sockfd_s[0]);
