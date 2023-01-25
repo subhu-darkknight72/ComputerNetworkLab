@@ -105,7 +105,6 @@ int main(int argc,char* argv[])
 
 		strcpy(buf,"Message from client to Server-2");
 		sendStr(buf, sockfd_s[1]);
-		
 		close(newsockfd);
 	}
 	close(sockfd_s[0]);
