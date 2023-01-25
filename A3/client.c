@@ -21,7 +21,6 @@ int main(int argc,char* argv[])
 	char buf[MAX_SIZE];
 	int server_port = atoi(argv[1]);
 
-	/* Opening a socket is exactly similar to the server process */
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("Unable to create socket\n");
 		exit(0);
@@ -37,11 +36,12 @@ int main(int argc,char* argv[])
 		exit(0);
 	}
 
+	for(i=0; i < MAX_SIZE; i++) buf[i] = '\0';
 	receiveStr(buf, sockfd);
 	printf("%s\n", buf);
+
 	
 	strcpy(buf,"Message from client");
-	printf("%s, \n",buf);
 	sendStr(buf, sockfd);
 		
 	close(sockfd);
@@ -49,10 +49,6 @@ int main(int argc,char* argv[])
 
 }
 
-/*
-	takes a string "str" (may be long), and send it to the client
-	by splitting the string into small chunks.
-*/
 void sendStr(char* str, int socket_id){
     int pos, i, len=strlen(str);
     char buf[BUF_SIZE];
@@ -66,15 +62,9 @@ void sendStr(char* str, int socket_id){
             perror("error in transmission.\n");
             exit(-1);
         }
-		// else
-		// 	printf("$%s$\n",buf);
     }
 }
 
-/*
-	receives string "str" (may be long) from the client
-	by concatenating the incoming string chunk stream
-*/
 void receiveStr(char *str, int socket_id){
     int flag=0, i, pos=0;
     char buf[BUF_SIZE];

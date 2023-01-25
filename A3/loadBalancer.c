@@ -1,13 +1,3 @@
-/*
-			NETWORK PROGRAMMING WITH SOCKETS
-
-In this program we illustrate the use of Berkeley sockets for interprocess
-communication across the network. We show the communication between a server
-process and a client process.
-
-
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -24,32 +14,71 @@ void receiveStr(char *str, int socket_id);
 
 int main(int argc,char* argv[])
 {
-	int			sockfd, newsockfd ; /* Socket descriptors */
-	int			clilen;
-	struct sockaddr_in	cli_addr, serv_addr;
+	int	sockfd_1, sockfd_2; /* Socket descriptors */
+	struct sockaddr_in serv1_addr, serv2_addr;
 
-
-	
 	int s1_port = atoi(argv[1]);
 	int s2_port = atoi(argv[2]);
+	int c0_port = atoi(argv[3]);
 
-	int i;
 	char buf[MAX_SIZE];		/* We will use this buffer for communication */
-
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		printf("Cannot create socket\n");
+	if ((sockfd_1 = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		printf("Cannot create socket-1\n");
+		exit(0);
+	}
+	if ((sockfd_2 = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		printf("Cannot create socket-2\n");
 		exit(0);
 	}
 
-	serv_addr.sin_family		= AF_INET;
-	serv_addr.sin_addr.s_addr	= INADDR_ANY;
-	serv_addr.sin_port		= htons(20000);
+	serv1_addr.sin_family		= AF_INET;
+	inet_aton("127.0.0.1", &serv_addr.sin_addr);
+	serv1_addr.sin_port		= htons(s1_port);
+
+	serv2_addr.sin_family		= AF_INET;
+	inet_aton("127.0.0.1", &serv_addr.sin_addr);
+	serv2_addr.sin_port		= htons(s2_port);
 
 	if (bind(sockfd, (struct sockaddr *) &serv_addr,
 					sizeof(serv_addr)) < 0) {
 		printf("Unable to bind local address\n");
 		exit(0);
 	}
+
+	struct pollfd S[2];
+    S[0].fd = sockfd;		S[0].events = POLLIN;
+	S[1].fd = sockfd;		S[1].events = POLLIN;
+
+    int timeout = 5000;
+    
+    int n;
+    socklen_t len; 
+
+	while(1){
+        int p_val = poll(S,1,timeout);
+        char *hello = "...CLIENT connected..."; 
+        sendto(sockfd, (const char *)hello, strlen(hello), 0, 
+	    		(const struct sockaddr *) &servaddr, sizeof(servaddr)); 
+        // printf("Hello message sent from client\n"); 
+
+        if(p_val<0){
+            perror("Poll-Error Message !!\n");
+            exit(0);
+        }
+        else if(p_val>0){
+            
+            //  successfully connected to server
+            len = sizeof(servaddr);
+            char buffer[MAXLINE]; 
+
+            //  retrieve the server time
+            n = recvfrom(sockfd, (char *)buffer, MAXLINE, 0, 
+	        		( struct sockaddr *) &servaddr, &len); 
+            buffer[n] = '\0'; 
+            printf("%s\n", buffer); 
+            break;
+        }
+    }
 
 	listen(sockfd, 5);
 	while (1) {

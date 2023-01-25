@@ -25,7 +25,7 @@ int main(int argc,char* argv[])
 	int i;
 	char buf[MAX_SIZE];		/* We will use this buffer for communication */
 	int server_port = atoi(argv[1]);
-	
+
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("Cannot create socket\n");
 		exit(0);
@@ -42,10 +42,11 @@ int main(int argc,char* argv[])
 	}
 
 	listen(sockfd, 5);
+
 	while (1) {
 		clilen = sizeof(cli_addr);
 		newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr,
-					(socklen_t*) &clilen) ;
+					(socklen_t *) &clilen) ;
 
 		if (newsockfd < 0) {
 			perror("Accept error\n");
@@ -56,11 +57,8 @@ int main(int argc,char* argv[])
     	char * time_str = ctime(&mytime);
     	time_str[strlen(time_str)-1] = '\0';
 
-		// if
-		// send(newsockfd, time_str, strlen(time_str) + 1, 0);
 		sendStr(time_str, newsockfd);
 
-		recv(newsockfd, buf, 100, 0);
 		receiveStr(buf, newsockfd);
 		printf("%s\n", buf);
 
@@ -68,12 +66,7 @@ int main(int argc,char* argv[])
 	}
 	return 0;
 }
-			
 
-/*
-	takes a string "str" (may be long), and send it to the client
-	by splitting the string into small chunks.
-*/
 void sendStr(char* str, int socket_id){
     int pos, i, len=strlen(str);
     char buf[BUF_SIZE];
@@ -90,10 +83,6 @@ void sendStr(char* str, int socket_id){
     }
 }
 
-/*
-	receives string "str" (may be long) from the client
-	by concatenating the incoming string chunk stream
-*/
 void receiveStr(char *str, int socket_id){
     int flag=0, i, pos=0;
     char buf[BUF_SIZE];
@@ -103,8 +92,7 @@ void receiveStr(char *str, int socket_id){
             perror("error in transmission.\n");
             exit(-1);
         }
-		else
-			printf("$%s$\n",buf);
+		// printf("$%s$\n",buf);
 
         for(i=0; i<BUF_SIZE && flag==0; i++)
             if(buf[i]=='\0') 
