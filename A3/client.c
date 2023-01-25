@@ -7,13 +7,18 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+const int BUF_SIZE = 1001;		//	Packet size for transmission
+const int MAX_SIZE = 1001;		//	Max length of strings to be ahndle in operations
+void sendStr(char* str, int socket_id);
+void receiveStr(char *str, int socket_id);
+
 int main(int argc,char* argv[])
 {
 	int			sockfd ;
 	struct sockaddr_in	serv_addr;
 
 	int i;
-	char buf[100];
+	char buf[MAX_SIZE];
 	int server_port = atoi(argv[1]);
 
 	/* Opening a socket is exactly similar to the server process */
@@ -32,17 +37,60 @@ int main(int argc,char* argv[])
 		exit(0);
 	}
 
-	for(i=0; i < 100; i++) buf[i] = '\0';
-	recv(sockfd, buf, 100, 0);
+	receiveStr(buf, sockfd);
 	printf("%s\n", buf);
-
-	
 	
 	strcpy(buf,"Message from client");
-	send(sockfd, buf, strlen(buf) + 1, 0);
+	printf("%s, \n",buf);
+	sendStr(buf, sockfd);
 		
 	close(sockfd);
 	return 0;
 
 }
 
+/*
+	takes a string "str" (may be long), and send it to the client
+	by splitting the string into small chunks.
+*/
+void sendStr(char* str, int socket_id){
+    int pos, i, len=strlen(str);
+    char buf[BUF_SIZE];
+
+    for(pos=0; pos<len; pos+=BUF_SIZE){
+        for(i=0; i<BUF_SIZE; i++)
+            buf[i] = ((pos+i)<len) ? str[pos+i]: '\0';
+
+		// send(socket_id, buf, BUF_SIZE, 0);
+        if(send(socket_id, buf, BUF_SIZE, 0) < 0){
+            perror("error in transmission.\n");
+            exit(-1);
+        }
+		// else
+		// 	printf("$%s$\n",buf);
+    }
+}
+
+/*
+	receives string "str" (may be long) from the client
+	by concatenating the incoming string chunk stream
+*/
+void receiveStr(char *str, int socket_id){
+    int flag=0, i, pos=0;
+    char buf[BUF_SIZE];
+    while(flag==0){
+        // recv(socket_id, buf, BUF_SIZE, 0)
+		if( recv(socket_id, buf, BUF_SIZE, 0) < 0 ){
+            perror("error in transmission.\n");
+            exit(-1);
+        }
+		// printf("$%s$\n",buf);
+
+        for(i=0; i<BUF_SIZE && flag==0; i++)
+            if(buf[i]=='\0') 
+				flag=1;
+
+        for(i=0; i<BUF_SIZE; i++, pos++)	
+			str[pos] = buf[i];
+    }
+}

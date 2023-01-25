@@ -11,6 +11,10 @@
 
 
 			/* THE SERVER PROCESS */
+const int BUF_SIZE = 1001;		//	Packet size for transmission
+const int MAX_SIZE = 1001;		//	Max length of strings to be ahndle in operations
+void sendStr(char* str, int socket_id);
+void receiveStr(char *str, int socket_id);
 
 int main(int argc,char* argv[])
 {
@@ -19,7 +23,7 @@ int main(int argc,char* argv[])
 	struct sockaddr_in	cli_addr, serv_addr;
 
 	int i;
-	char buf[100];		/* We will use this buffer for communication */
+	char buf[MAX_SIZE];		/* We will use this buffer for communication */
 	int server_port = atoi(argv[1]);
 	
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -52,9 +56,12 @@ int main(int argc,char* argv[])
     	char * time_str = ctime(&mytime);
     	time_str[strlen(time_str)-1] = '\0';
 
-		send(newsockfd, time_str, strlen(time_str) + 1, 0);
+		// if
+		// send(newsockfd, time_str, strlen(time_str) + 1, 0);
+		sendStr(time_str, newsockfd);
 
 		recv(newsockfd, buf, 100, 0);
+		receiveStr(buf, newsockfd);
 		printf("%s\n", buf);
 
 		close(newsockfd);
@@ -63,3 +70,47 @@ int main(int argc,char* argv[])
 }
 			
 
+/*
+	takes a string "str" (may be long), and send it to the client
+	by splitting the string into small chunks.
+*/
+void sendStr(char* str, int socket_id){
+    int pos, i, len=strlen(str);
+    char buf[BUF_SIZE];
+
+    for(pos=0; pos<len; pos+=BUF_SIZE){
+        for(i=0; i<BUF_SIZE; i++)
+            buf[i] = ((pos+i)<len) ? str[pos+i]: '\0';
+
+		// send(socket_id, buf, BUF_SIZE, 0);
+        if(send(socket_id, buf, BUF_SIZE, 0) < 0){
+            perror("error in transmission.\n");
+            exit(-1);
+        }
+    }
+}
+
+/*
+	receives string "str" (may be long) from the client
+	by concatenating the incoming string chunk stream
+*/
+void receiveStr(char *str, int socket_id){
+    int flag=0, i, pos=0;
+    char buf[BUF_SIZE];
+    while(flag==0){
+        // recv(socket_id, buf, BUF_SIZE, 0)
+		if( recv(socket_id, buf, BUF_SIZE, 0) < 0 ){
+            perror("error in transmission.\n");
+            exit(-1);
+        }
+		else
+			printf("$%s$\n",buf);
+
+        for(i=0; i<BUF_SIZE && flag==0; i++)
+            if(buf[i]=='\0') 
+				flag=1;
+
+        for(i=0; i<BUF_SIZE; i++, pos++)	
+			str[pos] = buf[i];
+    }
+}
