@@ -14,8 +14,8 @@ void receiveStr(char *str, int socket_id);
 
 int main(int argc,char* argv[])
 {
-	int	sockfd_1, sockfd_2; /* Socket descriptors */
-	struct sockaddr_in serv1_addr, serv2_addr;
+	int	sockfd_1, sockfd_2, sockfd, newsockfd; /* Socket descriptors */
+	struct sockaddr_in cli_addr, serv1_addr, serv2_addr;
 
 	int s1_port = atoi(argv[1]);
 	int s2_port = atoi(argv[2]);
@@ -30,81 +30,47 @@ int main(int argc,char* argv[])
 		printf("Cannot create socket-2\n");
 		exit(0);
 	}
-
-	serv1_addr.sin_family		= AF_INET;
-	inet_aton("127.0.0.1", &serv_addr.sin_addr);
-	serv1_addr.sin_port		= htons(s1_port);
-
-	serv2_addr.sin_family		= AF_INET;
-	inet_aton("127.0.0.1", &serv_addr.sin_addr);
-	serv2_addr.sin_port		= htons(s2_port);
-
-	if (bind(sockfd, (struct sockaddr *) &serv_addr,
-					sizeof(serv_addr)) < 0) {
-		printf("Unable to bind local address\n");
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		printf("Cannot create socket\n");
 		exit(0);
 	}
 
-	struct pollfd S[2];
-    S[0].fd = sockfd;		S[0].events = POLLIN;
-	S[1].fd = sockfd;		S[1].events = POLLIN;
+	serv1_addr.sin_family		= AF_INET;
+	inet_aton("127.0.0.1", &serv1_addr.sin_addr);
+	serv1_addr.sin_port		= htons(s1_port);
 
-    int timeout = 5000;
-    
-    int n;
-    socklen_t len; 
+	serv2_addr.sin_family		= AF_INET;
+	inet_aton("127.0.0.1", &serv2_addr.sin_addr);
+	serv2_addr.sin_port		= htons(s2_port);
 
-	while(1){
-        int p_val = poll(S,1,timeout);
-        char *hello = "...CLIENT connected..."; 
-        sendto(sockfd, (const char *)hello, strlen(hello), 0, 
-	    		(const struct sockaddr *) &servaddr, sizeof(servaddr)); 
-        // printf("Hello message sent from client\n"); 
-
-        if(p_val<0){
-            perror("Poll-Error Message !!\n");
-            exit(0);
-        }
-        else if(p_val>0){
-            
-            //  successfully connected to server
-            len = sizeof(servaddr);
-            char buffer[MAXLINE]; 
-
-            //  retrieve the server time
-            n = recvfrom(sockfd, (char *)buffer, MAXLINE, 0, 
-	        		( struct sockaddr *) &servaddr, &len); 
-            buffer[n] = '\0'; 
-            printf("%s\n", buffer); 
-            break;
-        }
-    }
-
-	listen(sockfd, 5);
-	while (1) {
-		clilen = sizeof(cli_addr);
-		newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr,
-					&clilen) ;
-
-		if (newsockfd < 0) {
-			printf("Accept error\n");
-			exit(0);
-		}
-
-		if (fork() == 0) {
-			close(sockfd);
-			strcpy(buf,"Message from server");
-			sendStr(buf, newsockfd)
-
-			receiveStr(buf, newsockfd)
-			printf("%s\n", buf);
-
-			close(newsockfd);
-			exit(0);
-		}
-
-		close(newsockfd);
+	if ((connect(sockfd_1, (struct sockaddr *) &serv1_addr,
+						sizeof(serv1_addr))) < 0) {
+		perror("Unable to connect to server-1\n");
+		exit(0);
 	}
+	else
+		printf("Connected to server-1 successfully!!\n");
+	
+	if ((connect(sockfd_2, (struct sockaddr *) &serv2_addr,
+						sizeof(serv2_addr))) < 0) {
+		perror("Unable to connect to server-2\n");
+		exit(0);
+	}
+	else
+		printf("Connected to server-2 successfully!!\n");
+
+	receiveStr(buf, sockfd_1);
+	printf("Server1: %s\n",buf);
+
+	receiveStr(buf, sockfd_2);
+	printf("Server2: %s\n",buf);
+
+	strcpy(buf,"Message from client to Server-1");
+	sendStr(buf, sockfd_1);
+
+	strcpy(buf,"Message from client to Server-2");
+	sendStr(buf, sockfd_2);
+	
 	return 0;
 }
 
