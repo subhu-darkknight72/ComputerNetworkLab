@@ -44,10 +44,11 @@ int main(int argc,char* argv[])
 
 	listen(sockfd, 5);
 
+	newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr,
+					(socklen_t *) &clilen) ;
 	while (1) {
 		clilen = sizeof(cli_addr);
-		newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr,
-					(socklen_t *) &clilen) ;
+		
 
 		if (newsockfd < 0) {
 			perror("Accept error\n");
@@ -72,8 +73,9 @@ int main(int argc,char* argv[])
 		receiveStr(buf, newsockfd);
 		printf("%s\n", buf);
 
-		close(newsockfd);
+		
 	}
+	close(newsockfd);
 	return 0;
 }
 
