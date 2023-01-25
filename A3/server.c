@@ -21,6 +21,7 @@ int main(int argc,char* argv[])
 	int			sockfd, newsockfd ; /* Socket descriptors */
 	int			clilen;
 	struct sockaddr_in	cli_addr, serv_addr;
+	srand(time(0));
 
 	int i;
 	char buf[MAX_SIZE];		/* We will use this buffer for communication */
@@ -53,12 +54,21 @@ int main(int argc,char* argv[])
 			exit(0);
 		}
 
-		time_t mytime = time(NULL);
-    	char * time_str = ctime(&mytime);
-    	time_str[strlen(time_str)-1] = '\0';
+		
+		int val = (rand())%100;
+		snprintf( buf, MAX_SIZE, "%d", val );
+		printf("Load: %s\n",buf);
+		sendStr(buf, newsockfd);
 
-		sendStr(time_str, newsockfd);
-
+		receiveStr(buf, newsockfd);
+		if(strcmp(buf, "time")==0){		
+			time_t mytime = time(NULL);
+    		char * time_str = ctime(&mytime);
+    		time_str[strlen(time_str)-1] = '\0';
+			sendStr(time_str, newsockfd);
+			printf("Time sent!!\n");
+		}
+		
 		receiveStr(buf, newsockfd);
 		printf("%s\n", buf);
 
@@ -86,8 +96,10 @@ void sendStr(char* str, int socket_id){
 void receiveStr(char *str, int socket_id){
     int flag=0, i, pos=0;
     char buf[BUF_SIZE];
+	memset(str, 0, MAX_SIZE);
     while(flag==0){
         // recv(socket_id, buf, BUF_SIZE, 0)
+		memset(buf, 0, BUF_SIZE);
 		if( recv(socket_id, buf, BUF_SIZE, 0) < 0 ){
             perror("error in transmission.\n");
             exit(-1);

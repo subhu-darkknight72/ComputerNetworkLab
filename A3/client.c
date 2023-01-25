@@ -36,7 +36,6 @@ int main(int argc,char* argv[])
 		exit(0);
 	}
 
-	for(i=0; i < MAX_SIZE; i++) buf[i] = '\0';
 	receiveStr(buf, sockfd);
 	printf("%s\n", buf);
 

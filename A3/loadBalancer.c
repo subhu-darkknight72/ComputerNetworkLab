@@ -14,24 +14,26 @@ void receiveStr(char *str, int socket_id);
 
 int main(int argc,char* argv[])
 {
-	int	sockfd_1, sockfd_2, sockfd, newsockfd; /* Socket descriptors */
-	struct sockaddr_in cli_addr, serv1_addr, serv2_addr;
+	int	clilen;
+	int	sockfd, newsockfd; /* Socket descriptors */
+	int sockfd_s[2];
+	struct sockaddr_in cli_addr, serv_addr, serv1_addr, serv2_addr;
 
 	int s1_port = atoi(argv[1]);
 	int s2_port = atoi(argv[2]);
 	int c0_port = atoi(argv[3]);
 
 	char buf[MAX_SIZE];		/* We will use this buffer for communication */
-	if ((sockfd_1 = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		printf("Cannot create socket-1\n");
+	if ((sockfd_s[0] = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		printf("Cannot create server-socket-1\n");
 		exit(0);
 	}
-	if ((sockfd_2 = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		printf("Cannot create socket-2\n");
+	if ((sockfd_s[1] = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		printf("Cannot create server-socket-2\n");
 		exit(0);
 	}
 	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		printf("Cannot create socket\n");
+		printf("Cannot create client-socket\n");
 		exit(0);
 	}
 
@@ -43,34 +45,71 @@ int main(int argc,char* argv[])
 	inet_aton("127.0.0.1", &serv2_addr.sin_addr);
 	serv2_addr.sin_port		= htons(s2_port);
 
-	if ((connect(sockfd_1, (struct sockaddr *) &serv1_addr,
-						sizeof(serv1_addr))) < 0) {
+	serv_addr.sin_family		= AF_INET;
+	serv_addr.sin_addr.s_addr	= INADDR_ANY;
+	serv_addr.sin_port		= htons(c0_port);
+
+	if ((connect(sockfd_s[0], (struct sockaddr *) &serv1_addr, sizeof(serv1_addr))) < 0) {
 		perror("Unable to connect to server-1\n");
 		exit(0);
 	}
 	else
 		printf("Connected to server-1 successfully!!\n");
 	
-	if ((connect(sockfd_2, (struct sockaddr *) &serv2_addr,
-						sizeof(serv2_addr))) < 0) {
+	if ((connect(sockfd_s[1], (struct sockaddr *) &serv2_addr, sizeof(serv2_addr))) < 0) {
 		perror("Unable to connect to server-2\n");
 		exit(0);
 	}
 	else
 		printf("Connected to server-2 successfully!!\n");
 
-	receiveStr(buf, sockfd_1);
-	printf("Server1: %s\n",buf);
+	if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+		printf("Unable to bind local address\n");
+		exit(0);
+	}
+	else
+		printf("Binded client-side address successfully!!\n");
 
-	receiveStr(buf, sockfd_2);
-	printf("Server2: %s\n",buf);
+	listen(sockfd, 5);
+	while(1){
+		clilen = sizeof(cli_addr);
+		newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr,
+					(socklen_t *)&clilen) ;
 
-	strcpy(buf,"Message from client to Server-1");
-	sendStr(buf, sockfd_1);
+		int l0, l1, k=0;
 
-	strcpy(buf,"Message from client to Server-2");
-	sendStr(buf, sockfd_2);
-	
+		receiveStr(buf, sockfd_s[0]);
+		l0 = atoi(buf);
+
+		receiveStr(buf, sockfd_s[1]);
+		l1 = atoi(buf);
+
+		printf("Server1 Load: %d\n",l0);
+		printf("Server2 Load: %d\n",l1);
+
+		if(l1<l0)	k=1;
+		
+		strcpy(buf,"kill");
+		sendStr(buf, sockfd_s[1-k]);
+
+		strcpy(buf,"time");
+		sendStr(buf, sockfd_s[k]);
+		receiveStr(buf, sockfd_s[k]);
+
+		sendStr(buf, newsockfd);
+		receiveStr(buf, newsockfd);
+		printf("%s\n", buf);
+
+		strcpy(buf,"Message from client to Server-1");
+		sendStr(buf, sockfd_s[0]);
+
+		strcpy(buf,"Message from client to Server-2");
+		sendStr(buf, sockfd_s[1]);
+		close(newsockfd);
+	}
+	close(sockfd_s[0]);
+	close(sockfd_s[1]);
+	close(sockfd);
 	return 0;
 }
 
