@@ -15,6 +15,7 @@ const int MAX_SIZE = 1001; //	Max length of strings to be ahndle in operations
 void sendStr(char *str, int socket_id);
 void receiveStr(char *str, int socket_id);
 int get_load(int port);
+void get_time(char* str,int port);
 
 int main(int argc, char *argv[]){
 	int clilen;
@@ -29,8 +30,7 @@ int main(int argc, char *argv[]){
 
 	char buf[MAX_SIZE]; /* We will use this buffer for communication */
 
-	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-	{
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
 		printf("Cannot create client-socket\n");
 		exit(0);
 	}
@@ -39,8 +39,7 @@ int main(int argc, char *argv[]){
 	serv_addr.sin_addr.s_addr = INADDR_ANY;
 	serv_addr.sin_port = htons(c0_port);
 
-	if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-	{
+	if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0){
 		printf("Unable to bind local address\n");
 		exit(0);
 	}
@@ -80,29 +79,11 @@ int main(int argc, char *argv[]){
 
 				if(fork()==0){
 					close(sockfd);
-					//	communicate connect
-					if ((sockfd_s[k] = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-						printf("Cannot create server-socket-1\n");
-						exit(0);
-					}
-
-					serv1_addr.sin_family = AF_INET;
-					inet_aton("127.0.0.1", &serv1_addr.sin_addr);
-					serv1_addr.sin_port = htons(s_port[k]);
-
-					if ((connect(sockfd_s[k], (struct sockaddr *)&serv1_addr, sizeof(serv1_addr))) < 0){
-						perror("Unable to connect to server\n");
-						exit(0);
-					}
-					
-					strcpy(buf, "time");
-					sendStr(buf, sockfd_s[k]);
-					receiveStr(buf, sockfd_s[k]);
-					
+					get_time(buf, s_port[k]);
 					printf("%s\n",buf);	
 					sendStr(buf, newsockfd);
 					
-					close(sockfd_s[k]);
+					// close(sockfd_s[k]);
 					close(newsockfd);
 					exit(0);
 				}
@@ -193,4 +174,28 @@ int get_load(int port){
 	
 	close(sockfd);
 	return load;
+}
+
+void get_time(char* str,int port){
+	int sockfd;
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+		printf("Cannot create server-socket-1\n");
+		exit(0);
+	}
+
+	struct sockaddr_in serv_addr;
+	serv_addr.sin_family = AF_INET;
+	inet_aton("127.0.0.1", &serv_addr.sin_addr);
+	serv_addr.sin_port = htons(port);
+
+	if ((connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr))) < 0){
+		perror("Unable to connect to server\n");
+		exit(0);
+	}
+
+	char* buf[MAX_SIZE];		
+	strcpy(buf, "time");
+	sendStr(buf, sockfd);
+	receiveStr(str, sockfd);
+	close(sockfd);
 }
