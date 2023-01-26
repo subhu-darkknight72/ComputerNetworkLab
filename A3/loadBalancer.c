@@ -14,9 +14,9 @@ const int BUF_SIZE = 1001; //	Packet size for transmission
 const int MAX_SIZE = 1001; //	Max length of strings to be ahndle in operations
 void sendStr(char *str, int socket_id);
 void receiveStr(char *str, int socket_id);
+int get_load(int port);
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
 	int clilen;
 	int sockfd, newsockfd; /* Socket descriptors */
 	int sockfd_s[2];
@@ -49,56 +49,13 @@ int main(int argc, char *argv[])
 
 	listen(sockfd, 5);
 
-	while (1)
-	{
-		if ((sockfd_s[0] = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-		{
-			printf("Cannot create server-socket-1\n");
-			exit(0);
-		}
-
-		serv1_addr.sin_family = AF_INET;
-		inet_aton("127.0.0.1", &serv1_addr.sin_addr);
-		serv1_addr.sin_port = htons(s_port[0]);
-
-		if ((connect(sockfd_s[0], (struct sockaddr *)&serv1_addr, sizeof(serv1_addr))) < 0){
-			perror("Unable to connect to server-1\n");
-			exit(0);
-		}
-		else
-			printf("Connected to server-1 successfully!!\n");
+	while (1){
 		int l0, l1;
 
-		strcpy(buf, "load");
-		sendStr(buf, sockfd_s[0]);
-		receiveStr(buf, sockfd_s[0]);
-		l0 = atoi(buf);
-		close(sockfd_s[0]);
+		l0 = get_load(s_port[0]);
+		l1 = get_load(s_port[1]);
 
-		if ((sockfd_s[1] = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-			printf("Cannot create server-socket-2\n");
-			exit(0);
-		}
-
-		serv2_addr.sin_family = AF_INET;
-		inet_aton("127.0.0.1", &serv2_addr.sin_addr);
-		serv2_addr.sin_port = htons(s_port[1]);
-
-		if ((connect(sockfd_s[1], (struct sockaddr *)&serv2_addr, sizeof(serv2_addr))) < 0){
-			perror("Unable to connect to server-2\n");
-			exit(0);
-		}
-		else
-			printf("Connected to server-2 successfully!!\n");
-		
-		strcpy(buf, "load");
-		sendStr(buf, sockfd_s[1]);
-		receiveStr(buf, sockfd_s[1]);
-		l1 = atoi(buf);
-		close(sockfd_s[1]);
-
-		printf("Server1 Load: %d\n", l0);
-		printf("Server2 Load: %d\n", l1);
+		printf("Server1 Load: %d    %d\n", l0, l1);
 
 		int timeout = 5000;
 		while(timeout>0){
@@ -209,4 +166,31 @@ void receiveStr(char *str, int socket_id)
 		for (i = 0; i < BUF_SIZE; i++, pos++)
 			str[pos] = buf[i];
 	}
+}
+
+int get_load(int port){
+	int sockfd;
+	if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+		printf("Cannot create server-socket-1\n");
+		exit(0);
+	}
+
+	struct sockaddr_in serv_addr;
+	serv_addr.sin_family = AF_INET;
+	inet_aton("127.0.0.1", &serv_addr.sin_addr);
+	serv_addr.sin_port = htons(port);
+	
+	if ((connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr))) < 0){
+		perror("Unable to connect to server-1\n");
+		exit(0);
+	}
+
+	char buf[MAX_SIZE];
+	strcpy(buf, "load");
+	sendStr(buf, sockfd);
+	receiveStr(buf, sockfd);
+	int load = atoi(buf);
+	
+	close(sockfd);
+	return load;
 }

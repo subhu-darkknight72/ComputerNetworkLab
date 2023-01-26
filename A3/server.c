@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 		}
 
 		receiveStr(buf, newsockfd);
-		printf("Command: %s\n",buf);
+		// printf("Command: %s\n",buf);
 		if (strcmp(buf, "load") == 0)
 		{
 			int val = (rand()) % 100;
