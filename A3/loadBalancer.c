@@ -54,7 +54,7 @@ int main(int argc, char *argv[]){
 		l0 = get_load(s_port[0]);
 		l1 = get_load(s_port[1]);
 
-		printf("Server1 Load: %d    %d\n", l0, l1);
+		// printf("Server1 Load: %d    %d\n", l0, l1);
 
 		int timeout = 5000;
 		while(timeout>0){
@@ -71,16 +71,16 @@ int main(int argc, char *argv[]){
 			else if(pval>0){
 				clilen = sizeof(cli_addr);
 				newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr,(socklen_t *)&clilen);
-				printf("Client Connected!!\n");
+				// printf("Client Connected!!\n");
 
 				int k = 0;
 				if (l1 < l0)	k = 1;
-				printf("min loaded-server: %d\n",k);
+				// printf("min loaded-server: %d\n",k);
 
 				if(fork()==0){
 					close(sockfd);
 					get_time(buf, s_port[k]);
-					printf("%s\n",buf);	
+					// printf("%s\n",buf);	
 					sendStr(buf, newsockfd);
 					
 					// close(sockfd_s[k]);
@@ -167,11 +167,12 @@ int get_load(int port){
 	}
 
 	char buf[MAX_SIZE];
-	strcpy(buf, "load");
+	strcpy(buf, "Send Load");
 	sendStr(buf, sockfd);
 	receiveStr(buf, sockfd);
 	int load = atoi(buf);
-	
+	printf("Load received from %s:%d: %d\n",inet_ntoa(serv_addr.sin_addr), port, load);
+
 	close(sockfd);
 	return load;
 }
@@ -187,7 +188,8 @@ void get_time(char* str,int port){
 	serv_addr.sin_family = AF_INET;
 	inet_aton("127.0.0.1", &serv_addr.sin_addr);
 	serv_addr.sin_port = htons(port);
-
+	printf("Sending client request to %s:%d\n",inet_ntoa(serv_addr.sin_addr), port);
+	
 	if ((connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr))) < 0){
 		perror("Unable to connect to server\n");
 		exit(0);

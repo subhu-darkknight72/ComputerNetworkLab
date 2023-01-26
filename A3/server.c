@@ -58,11 +58,11 @@ int main(int argc, char *argv[])
 
 		receiveStr(buf, newsockfd);
 		// printf("Command: %s\n",buf);
-		if (strcmp(buf, "load") == 0)
+		if (strcmp(buf, "Send Load") == 0)
 		{
 			int val = (rand()) % 100;
+			printf("Load sent: %d\n", val);
 			snprintf(buf, MAX_SIZE, "%d", val);
-			printf("Load: %s\n", buf);
 			sendStr(buf, newsockfd);
 		}
 		else if (strcmp(buf, "time") == 0)
