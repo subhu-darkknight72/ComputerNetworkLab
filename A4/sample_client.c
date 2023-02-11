@@ -5,6 +5,7 @@
 #include "sys/socket.h"
 #include "string.h"
 #include "netinet/in.h"
+#include "dirent.h"
 #include "netdb.h"
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -39,14 +40,21 @@ int main(int argc, char **argv)
     char contentType[] = "Content-Type: ";
     int sPos, ePos;
 
-    if (argc < 3)
-    {
-        printf("usage: [URL] [port number]\n");
-        exit(1);
-    }
+    // if (argc < 3)
+    // {
+    //     printf("usage: [URL] [port number]\n");
+    //     exit(1);
+    // }
 
-    url = argv[1];
-    portNumber = atoi(argv[2]);
+    // url = argv[1];
+    // portNumber = atoi(argv[2]);
+    url = (char *)calloc(10000, sizeof(char));
+    strcpy(url, "127.0.0.1/gg.txt");
+    char *port_n = "8080";
+    portNumber = atoi(port_n);
+    // ./c "127.0.0.1/gg.txt" 8080
+    // ./c '127.0.0.1/Users/subhu/Desktop/Sem/Sem 6/CN Lab/ComputerNetworkLab/A4/gg.txt' 8080
+
 
     // checking the protocol specified
     if ((temp = strstr(url, "http://")) != NULL)
@@ -65,10 +73,12 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    sockfd = get_request(url, argv[2]);
-
-    memset(&buffer, 0, sizeof(buffer));
+    // printf("GG--");
+    sockfd = get_request(url, port_n);
+    
+    memset(buffer, 0, sizeof(buffer));
     ret = recv(sockfd, buffer, BUF_SIZE, 0);
+    printf("ret: %d buffer1: $%s$\n",ret,buffer);
     if (ret < 0)
     {
         printf("Error receiving HTTP status!\n");
@@ -95,7 +105,8 @@ int main(int argc, char **argv)
     }
     else
     {
-        printf("%s\n", buffer);
+        printf("buffer2: %s\n", buffer);
+
         if (parseHeader(buffer) == 0)
         {
             send(sockfd, status_ok, strlen(status_ok), 0);
@@ -109,6 +120,14 @@ int main(int argc, char **argv)
     }
 
     // printf("file: [%s]\n", fileName);
+    // strcpy(path, path+1);
+    // strcpy(path, "gg.txt");
+    int i=1;
+    for(; path[i]!='\0'; i++)
+        path[i-1]=path[i];
+    path[i-1]='\0';
+
+    printf("path: %s\n",path); // where is path getting initialized (in get_request)
     fileptr = fopen(path, "w");
     if (fileptr == NULL)
     {
@@ -116,6 +135,8 @@ int main(int argc, char **argv)
         close(sockfd);
         return 0;
     }
+    else
+        printf("opened file!\n");
 
     memset(&buffer, 0, sizeof(buffer));
     while (recv(sockfd, buffer, BUF_SIZE, 0) > 0)
@@ -141,7 +162,6 @@ int main(int argc, char **argv)
 
 int get_request(char *url, char *port)
 {
-
     int sockfd, bindfd;
     char *ptr, *host;
     char getrequest[1024];
@@ -163,10 +183,13 @@ int get_request(char *url, char *port)
             // when hostname contains a slash, it is a path to file
             strcpy(path, ptr);
             host = strtok(url, "/");
+
+            // printf("path: $%s$\n",path);
+            // printf("url: $%s$\n",url);
             sprintf(getrequest, "GET %s HTTP/1.0\nHOST: %s\n\n", path, url);
+            // printf("get_req: $%s$\n",getrequest);
         }
     }
-
     // creates a socket to the host
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
@@ -186,9 +209,27 @@ int get_request(char *url, char *port)
         printf("Connection Error!\n");
         exit(1);
     }
+
     printf("Connection successful...\n\n\n");
-    ptr = strtok(path, "/");
-    strcpy(path, ptr);
+    //ptr=path+1;
+    //strcpy(path,ptr);
+    // ptr = strtok(path, "/");
+    // ptr= path+1;
+
+    ///printf("path: $%s$\n",path);
+    ///printf("ptr: $%s$\n",ptr);
+    // char *ptemp = ptr;
+    // while(ptemp!=NULL){
+    //     printf("$%s$ ",ptemp);
+    //     ptemp = strtok(NULL, "/");
+    // }
+    // printf("\n");
+
+    // printf("\nGG-2-\n");
+    // printf("$%s$",ptr);
+    // printf("\nGG-3-\n");
+
+    // strcpy(path, ptr);
     // printf("path=%s\n", path);
     // fileptr = fopen(path, "w");
     // strcpy(fileName, path);
@@ -198,8 +239,11 @@ int get_request(char *url, char *port)
     // setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
 
     // writes the HTTP GET Request to the sockfd
-    write(sockfd, getrequest, strlen(getrequest));
-
+    // printf("\nGG-0-\n");
+    // printf("$%s$\n",getrequest);
+    // write(sockfd, getrequest, strlen(getrequest));
+    send(sockfd, getrequest, strlen(getrequest), 0);
+    // printf("\nGG-1-\n");
     return sockfd;
 }
 
@@ -262,7 +306,7 @@ void openFile()
     {
         if ((temp = strstr(fileName, ".txt")) != NULL)
         {
-            sprintf(command, "gedit %s", fileName);
+            sprintf(command, "open -a TextEdit %s", fileName);
         }
         else
         {
