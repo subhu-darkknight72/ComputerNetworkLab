@@ -49,7 +49,8 @@ int main(int argc, char **argv)
     // url = argv[1];
     // portNumber = atoi(argv[2]);
     url = (char *)calloc(10000, sizeof(char));
-    strcpy(url, "127.0.0.1/gg.txt");
+    // strcpy(url, "127.0.0.1/gg.txt");
+    strcpy(url, "127.0.0.1/TimeTable_Sem6.pdf");
     char *port_n = "8080";
     portNumber = atoi(port_n);
     // ./c "127.0.0.1/gg.txt" 8080
@@ -73,7 +74,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    // printf("GG--");
+    printf("url: $%s$\n",url);
     sockfd = get_request(url, port_n);
     
     memset(buffer, 0, sizeof(buffer));
@@ -316,7 +317,7 @@ void openFile()
     }
     else if ((temp = strstr(contentFileType, "application/pdf")) != NULL)
     {
-        sprintf(command, "acroread %s", fileName);
+        sprintf(command, "open -a Preview.app %s", fileName);
         system(command);
     }
     else

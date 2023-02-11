@@ -33,7 +33,7 @@ int main(int argc, char **argv)
     char get[3], http[9];
     char filepath[BUF_SIZE];
     char http_not_found[] = "HTTP/1.0 404 Not Found\n";
-    char *http_ok;
+    char http_ok[] = "HTTP/1.0 200 OK\n";
     char buffer[BUF_SIZE];
     char *contentType;
 
@@ -103,8 +103,8 @@ int main(int argc, char **argv)
         {
             printf("Sending the file...\n");
 
-            http_ok = (char *)calloc(10000, sizeof(char));
-            strcpy(http_ok, "HTTP/1.0 200 OK");
+            // http_ok = (char *)calloc(10000, sizeof(char));
+            // strcpy(http_ok, "HTTP/1.0 200 OK");
             printf("$%s$\n",http_ok);
             //printf("connfd:%d\n",connfd);  // file descriptor is changing
             connfd=temp_con;
@@ -220,6 +220,10 @@ char *getFileType(char *file)
     else if ((temp = strstr(file, ".txt")) != NULL)
     {
         return "text/html";
+    }
+    else if (((temp = strstr(file, ".jpeg")) != NULL) || ((temp = strstr(file, ".heic")) != NULL))
+    {
+        return "image/jpeg";
     }
     return "Error aa gaya!!";
 }
