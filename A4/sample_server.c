@@ -161,7 +161,7 @@ int listenForRequest(int sockfd)
 
     listen(sockfd, 5); // maximum 5 connections
     len = sizeof(addr);
-    if ((conn = accept(sockfd, (struct sockaddr *)&addr,(socklen_t *)&len)) < 0)
+    if ((conn = accept(sockfd, (struct sockaddr *)&addr, (socklen_t *)&len)) < 0)
     {
         printf("Error accepting connection!\n");
         exit(1);
