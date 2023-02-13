@@ -27,7 +27,7 @@ int main(int argc, char **argv)
     time(&timenow);
     timeinfo = localtime(&timenow);
 
-    char *header, *request, *path, *newpath, *host;
+    char *header, *request, *path, *newpath, *host, *hst, *body, *ip;
     char *dir, *temp;
     int port, sockfd, connfd;
     char get[3], http[9];
@@ -47,6 +47,9 @@ int main(int argc, char **argv)
     request = (char *)malloc(BUF_SIZE * sizeof(char));
     path = (char *)malloc(BUF_SIZE * sizeof(char));
     newpath = (char *)malloc(BUF_SIZE * sizeof(char));
+    ip = (char *)malloc(BUF_SIZE * sizeof(char));
+    hst = (char *)malloc(BUF_SIZE * sizeof(char));
+    body = (char *)malloc(BUF_SIZE * sizeof(char));
 
     // host = argv[1];
     // dir = argv[2];
@@ -55,7 +58,7 @@ int main(int argc, char **argv)
     host = (char *)calloc(10000, sizeof(char));
     dir = (char *)calloc(10000, sizeof(char));
     strcpy(host, "127.0.0.1");
-    strcpy(dir, "/Users/subhu/Desktop/Sem/Sem 6/CN Lab/ComputerNetworkLab/A4");
+    strcpy(dir, "/mnt/c/Users/gggit/Downloads");
     port = atoi("8080");
 
     if ((dirptr = opendir(dir)) == NULL)
@@ -65,78 +68,130 @@ int main(int argc, char **argv)
     }
 
     sockfd = createSocket(host, port);
-    while(1)
+    while (1)
     {
         printf("--------------------------------------------------------\n");
         printf("Waiting for a connection...\n");
         connfd = listenForRequest(sockfd);
         // gets the request from the connection
-        printf("connfd1:%d\n",connfd);
-        int temp_con=connfd;
+        printf("connfd1:%d\n", connfd);
+        int temp_con = connfd;
         recv(connfd, request, 100, 0);
-        
-        printf("$%s$\n",request);
-        
+
+        printf("$%s$\n", request);
+
         printf("Processing request...\n");
-        
+
         // parses request
-        sscanf(request, "%s %s %s", get, path, http);
-        //printf("connfd2:%d\n",connfd); // file descriptor is changing after sscanf command
-        
+        memset(get,0,3);
+        sscanf(request, "%s %s %s\n%s %s\n\n%s", get, path, http, hst, ip, body);
+        // printf("connfd2:%d\n",connfd); // file descriptor is changing after sscanf command
+
         newpath = path + 1; // ignores the first slash
         sprintf(filepath, "%s/%s", dir, newpath);
-        
-        printf("filepath= $%s$\n",filepath);
-        printf("dir= $%s$\n",dir);
-        printf("newpath= $%s$\n",newpath);
-        
+        printf("get=$%s$\n", get);
+        printf("filepath= $%s$\n", filepath);
+        printf("http=&%s&", http);
+        printf("dir= $%s$\n", dir);
+        printf("newpath= $%s$\n", newpath);
+        printf("body=%s\n", body);
+
         contentType = getFileType(newpath);
         sprintf(header, "Date: %sHostname: %s:%d\nLocation: %s\nContent-Type: %s\n\n", asctime(timeinfo), host, port, newpath, contentType);
-        
-        if ((fileptr = fopen(filepath, "r")) == NULL)
+        if (strstr(get, "GET") != NULL)
         {
-            printf("File not found!\n");
-            connfd=temp_con;
-            send(connfd, http_not_found, strlen(http_not_found), 0); // sends HTTP 404
+            if ((fileptr = fopen(filepath, "r")) == NULL)
+            {
+                printf("File not found!\n");
+                connfd = temp_con;
+                send(connfd, http_not_found, strlen(http_not_found), 0); // sends HTTP 404
+            }
+            else
+            {
+                printf("Sending the file...\n");
+
+                // http_ok = (char *)calloc(10000, sizeof(char));
+                // strcpy(http_ok, "HTTP/1.0 200 OK");
+                printf("$%s$\n", http_ok);
+                // printf("connfd:%d\n",connfd);  // file descriptor is changing
+                connfd = temp_con;
+                ssize_t bytes_sent = send(connfd, http_ok, strlen(http_ok) + 1, 0); // sends HTTP 200 OK
+                printf("bytes_sent: %zd, length of http_ok: %lu\n", bytes_sent, strlen(http_ok));
+
+                memset(buffer, 0, BUF_SIZE);
+                recv(connfd, buffer, BUF_SIZE, 0);
+                printf("$%s$\n", buffer);
+                if ((temp = strstr(buffer, "OK")) == NULL)
+                {
+                    printf("Operation aborted by the user!\n");
+                    break;
+                }
+                send(connfd, header, strlen(header), 0); // sends the header
+                recv(connfd, buffer, BUF_SIZE, 0);
+                if ((temp = strstr(buffer, "OK")) == NULL)
+                {
+                    printf("Operation aborted by the user!\n");
+                    break;
+                }
+                memset(&buffer, 0, sizeof(buffer));
+                while (!feof(fileptr))
+                { // sends the file
+                    fread(&buffer, sizeof(buffer), 1, fileptr);
+                    send(connfd, buffer, sizeof(buffer), 0);
+                    memset(&buffer, 0, sizeof(buffer));
+                }
+                printf("File sent...\n");
+            }
+            printf("Processing completed...\n");
+            close(connfd);
         }
         else
         {
-            printf("Sending the file...\n");
-
-            // http_ok = (char *)calloc(10000, sizeof(char));
-            // strcpy(http_ok, "HTTP/1.0 200 OK");
-            printf("$%s$\n",http_ok);
-            //printf("connfd:%d\n",connfd);  // file descriptor is changing
-            connfd=temp_con;
-            ssize_t bytes_sent = send(connfd, http_ok, strlen(http_ok)+1, 0); // sends HTTP 200 OK
-            printf("bytes_sent: %zd, length of http_ok: %lu\n",bytes_sent, strlen(http_ok));
-
-            memset(buffer, 0, BUF_SIZE);
-            recv(connfd, buffer, BUF_SIZE, 0);
-            printf("$%s$\n",buffer);
-            if ((temp = strstr(buffer, "OK")) == NULL)
+            if ((fileptr = fopen(filepath, "w")) == NULL)
             {
-                printf("Operation aborted by the user!\n");
-                break;
+                printf("File not found!\n");
+                connfd = temp_con;
+                send(connfd, http_not_found, strlen(http_not_found), 0); // sends HTTP 404
             }
-            send(connfd, header, strlen(header), 0); // sends the header
-            recv(connfd, buffer, BUF_SIZE, 0);
-            if ((temp = strstr(buffer, "OK")) == NULL)
+            else
             {
-                printf("Operation aborted by the user!\n");
-                break;
-            }
-            memset(&buffer, 0, sizeof(buffer));
-            while (!feof(fileptr))
-            { // sends the file
-                fread(&buffer, sizeof(buffer), 1, fileptr);
-                send(connfd, buffer, sizeof(buffer), 0);
+                printf("Got the file...\n");
+
+                // http_ok = (char *)calloc(10000, sizeof(char));
+                // strcpy(http_ok, "HTTP/1.0 200 OK");
+                printf("$%s$\n", http_ok);
+                // printf("connfd:%d\n",connfd);  // file descriptor is changing
+                connfd = temp_con;
+                ssize_t bytes_sent = send(connfd, http_ok, strlen(http_ok) + 1, 0); // sends HTTP 200 OK
+                printf("bytes_sent: %zd, length of http_ok: %lu\n", bytes_sent, strlen(http_ok));
+
+                memset(buffer, 0, BUF_SIZE);
+                recv(connfd, buffer, BUF_SIZE, 0);
+                printf("$%s$\n", buffer);
+                if ((temp = strstr(buffer, "OK")) == NULL)
+                {
+                    printf("Operation aborted by the user!\n");
+                    break;
+                }
+                send(connfd, header, strlen(header), 0); // sends the header
+                recv(connfd, buffer, BUF_SIZE, 0);
+                if ((temp = strstr(buffer, "OK")) == NULL)
+                {
+                    printf("Operation aborted by the user!\n");
+                    break;
+                }
                 memset(&buffer, 0, sizeof(buffer));
+                while (!feof(fileptr))
+                { // sends the file
+                    fread(&buffer, sizeof(buffer), 1, fileptr);
+                    send(connfd, buffer, sizeof(buffer), 0);
+                    memset(&buffer, 0, sizeof(buffer));
+                }
+                printf("File sent...\n");
             }
-            printf("File sent...\n");
+            printf("Processing completed...\n");
+            close(connfd);
         }
-        printf("Processing completed...\n");
-        close(connfd);
     }
 
     close(sockfd);
@@ -144,6 +199,9 @@ int main(int argc, char **argv)
     free(request);
     free(path);
     free(newpath);
+    free(hst);
+    free(ip);
+    free(body);
 
     return 0;
 }

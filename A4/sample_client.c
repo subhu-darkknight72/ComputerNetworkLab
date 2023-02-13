@@ -13,6 +13,7 @@
 #define BUF_SIZE 1024
 
 int get_request(char *url, char *port);
+int put_request(char *url, char *port);
 int isValidIP(char *ip);
 int parseHeader(char *header);
 char *splitKeyValue(char *line, int index);
@@ -50,7 +51,7 @@ int main(int argc, char **argv)
     // portNumber = atoi(argv[2]);
     url = (char *)calloc(10000, sizeof(char));
     // strcpy(url, "127.0.0.1/gg.txt");
-    strcpy(url, "127.0.0.1/TimeTable_Sem6.pdf");
+    strcpy(url, "127.0.0.1/gg.txt");
     char *port_n = "8080";
     portNumber = atoi(port_n);
     // ./c "127.0.0.1/gg.txt" 8080
@@ -75,8 +76,9 @@ int main(int argc, char **argv)
     }
 
     printf("url: $%s$\n",url);
-    sockfd = get_request(url, port_n);
-    
+    //sockfd = get_request(url, port_n);
+    sockfd = put_request(url, port_n);
+
     memset(buffer, 0, sizeof(buffer));
     ret = recv(sockfd, buffer, BUF_SIZE, 0);
     printf("ret: %d buffer1: $%s$\n",ret,buffer);
@@ -243,6 +245,94 @@ int get_request(char *url, char *port)
     // printf("\nGG-0-\n");
     // printf("$%s$\n",getrequest);
     // write(sockfd, getrequest, strlen(getrequest));
+    send(sockfd, getrequest, strlen(getrequest), 0);
+    // printf("\nGG-1-\n");
+    return sockfd;
+}
+int put_request(char *url, char *port)
+{
+    int sockfd, bindfd;
+    char *ptr, *host;
+    char getrequest[1024];
+    struct sockaddr_in addr;
+    char *body="eg.txt";
+
+    if (isValidIP(url))
+    { // when an IP address is given
+        sprintf(getrequest, "PUT / HTTP/1.0\nHOST: %s\n\n%s", url,body);
+    }
+    else
+    { // when a host name is given
+        if ((ptr = strstr(url, "/")) == NULL)
+        {
+            // when hostname does not contain a slash
+            sprintf(getrequest, "PUT / HTTP/1.0\nHOST: %s\n\n%s", url,body);
+        }
+        else
+        {
+            // when hostname contains a slash, it is a path to file
+            strcpy(path, ptr);
+            host = strtok(url, "/");
+
+            // printf("path: $%s$\n",path);
+            // printf("url: $%s$\n",url);
+            sprintf(getrequest, "PUT %s HTTP/1.0\nHOST: %s\n\n%s", path, url,body);
+            // printf("get_req: $%s$\n",getrequest);
+        }
+    }
+    // creates a socket to the host
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0)
+    {
+        printf("Error creating socket!\n");
+        exit(1);
+    }
+    printf("Socket created...\n");
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr(url);
+    addr.sin_port = htons(atoi(port));
+
+    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+    {
+        printf("Connection Error!\n");
+        exit(1);
+    }
+
+    printf("Connection successful...\n\n\n");
+    //ptr=path+1;
+    //strcpy(path,ptr);
+    // ptr = strtok(path, "/");
+    // ptr= path+1;
+
+    ///printf("path: $%s$\n",path);
+    ///printf("ptr: $%s$\n",ptr);
+    // char *ptemp = ptr;
+    // while(ptemp!=NULL){
+    //     printf("$%s$ ",ptemp);
+    //     ptemp = strtok(NULL, "/");
+    // }
+    // printf("\n");
+
+    // printf("\nGG-2-\n");
+    // printf("$%s$",ptr);
+    // printf("\nGG-3-\n");
+
+    // strcpy(path, ptr);
+    // printf("path=%s\n", path);
+    // fileptr = fopen(path, "w");
+    // strcpy(fileName, path);
+    // sprintf(fileName, "%s", path);
+
+    // int optval = 1;
+    // setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+
+    // writes the HTTP GET Request to the sockfd
+    // printf("\nGG-0-\n");
+    // printf("$%s$\n",getrequest);
+    // write(sockfd, getrequest, strlen(getrequest));
+    printf("getrequest:%s\n",getrequest);
     send(sockfd, getrequest, strlen(getrequest), 0);
     // printf("\nGG-1-\n");
     return sockfd;
