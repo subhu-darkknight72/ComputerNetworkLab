@@ -17,6 +17,11 @@
 int createSocket(char *host, int port);
 int listenForRequest(int sockfd);
 char *getFileType(char *file);
+int parseHeader(char *header);
+char *splitKeyValue(char *line, int index);
+char contentFileType[100];
+char status[4] = {0, 0, 0, 0};
+char keys[][25] = {"Date: ", "Hostname: ", "Location: ", "Content-Type: "};
 
 int main(int argc, char **argv)
 {
@@ -83,7 +88,7 @@ int main(int argc, char **argv)
         printf("Processing request...\n");
 
         // parses request
-        memset(get,0,3);
+        memset(get, 0, 3);
         sscanf(request, "%s %s %s\n%s %s\n\n%s", get, path, http, hst, ip, body);
         // printf("connfd2:%d\n",connfd); // file descriptor is changing after sscanf command
 
@@ -180,14 +185,20 @@ int main(int argc, char **argv)
                     printf("Operation aborted by the user!\n");
                     break;
                 }
+                strcpy(contentFileType,"text/html");
                 memset(&buffer, 0, sizeof(buffer));
-                while (!feof(fileptr))
-                { // sends the file
-                    fread(&buffer, sizeof(buffer), 1, fileptr);
-                    send(connfd, buffer, sizeof(buffer), 0);
+                while (recv(sockfd, buffer, BUF_SIZE, 0) > 0)
+                { // receives the file
+                    if ((strstr(contentFileType, "text/html")) != NULL)
+                    {
+                        fprintf(fileptr, "%s", buffer);
+                    }
+                    else
+                    {
+                        fwrite(&buffer, sizeof(buffer), 1, fileptr);
+                    }
                     memset(&buffer, 0, sizeof(buffer));
                 }
-                printf("File sent...\n");
             }
             printf("Processing completed...\n");
             close(connfd);
@@ -284,4 +295,44 @@ char *getFileType(char *file)
         return "image/jpeg";
     }
     return "Error aa gaya!!";
+}
+
+int parseHeader(char *header)
+{
+    //"Date: %sHostname: %s:%d\nLocation: %s\nContent-Type: %s\n\n"
+    char *line, *key, *value;
+    char temp[100];
+    int i = 0;
+    line = strtok(header, "\n");
+    while (line != NULL)
+    {
+        // printf("%s\n", line);
+        strcpy(temp, line);
+        value = splitKeyValue(line, i);
+        if (i == 3)
+        {
+            strcpy(contentFileType, value);
+        }
+        // printf("value=%s\n", value);
+        line = strtok(NULL, "\n");
+        i++;
+    }
+    for (i = 0; i < 4; i++)
+    {
+        if (status[i] == 0)
+            return 1;
+        // printf("status[%d]=%d\n", i, status[i]);
+    }
+    return 0;
+}
+
+char *splitKeyValue(char *line, int index)
+{
+    char *temp;
+    if ((temp = strstr(line, keys[index])) != NULL)
+    {
+        temp = temp + strlen(keys[index]);
+        status[index] = 1;
+    }
+    return temp;
 }

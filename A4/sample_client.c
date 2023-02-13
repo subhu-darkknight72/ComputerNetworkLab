@@ -17,12 +17,13 @@ int put_request(char *url, char *port);
 int isValidIP(char *ip);
 int parseHeader(char *header);
 char *splitKeyValue(char *line, int index);
+char contentFileType[100];
 void openFile();
 
 FILE *fileptr;
 char keys[][25] = {"Date: ", "Hostname: ", "Location: ", "Content-Type: "};
 char status[4] = {0, 0, 0, 0};
-char contentFileType[100];
+
 char path[1000];
 
 int main(int argc, char **argv)
@@ -57,7 +58,6 @@ int main(int argc, char **argv)
     // ./c "127.0.0.1/gg.txt" 8080
     // ./c '127.0.0.1/Users/subhu/Desktop/Sem/Sem 6/CN Lab/ComputerNetworkLab/A4/gg.txt' 8080
 
-
     // checking the protocol specified
     if ((temp = strstr(url, "http://")) != NULL)
     {
@@ -75,13 +75,13 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    printf("url: $%s$\n",url);
-    //sockfd = get_request(url, port_n);
+    printf("url: $%s$\n", url);
+    // sockfd = get_request(url, port_n);
     sockfd = put_request(url, port_n);
 
     memset(buffer, 0, sizeof(buffer));
     ret = recv(sockfd, buffer, BUF_SIZE, 0);
-    printf("ret: %d buffer1: $%s$\n",ret,buffer);
+    printf("ret: %d buffer1: $%s$\n", ret, buffer);
     if (ret < 0)
     {
         printf("Error receiving HTTP status!\n");
@@ -125,12 +125,13 @@ int main(int argc, char **argv)
     // printf("file: [%s]\n", fileName);
     // strcpy(path, path+1);
     // strcpy(path, "gg.txt");
-    int i=1;
-    for(; path[i]!='\0'; i++)
-        path[i-1]=path[i];
-    path[i-1]='\0';
+    int i = 1;
+    for (; path[i] != '\0'; i++)
+        path[i - 1] = path[i];
+    path[i - 1] = '\0';
 
-    printf("path: %s\n",path); // where is path getting initialized (in get_request)
+    printf("path: %s\n", path); // where is path getting initialized (in get_request)
+    /////////////////////////////////////// 
     fileptr = fopen(path, "w");
     if (fileptr == NULL)
     {
@@ -140,22 +141,37 @@ int main(int argc, char **argv)
     }
     else
         printf("opened file!\n");
+    ////////////////////////////////////////////// get_request
+    // memset(&buffer, 0, sizeof(buffer));
+    // while (recv(sockfd, buffer, BUF_SIZE, 0) > 0)
+    // { // receives the file
+    //     if ((strstr(contentFileType, "text/html")) != NULL)
+    //     {
+    //         fprintf(fileptr, "%s", buffer);
+    //     }
+    //     else
+    //     {
+    //         fwrite(&buffer, sizeof(buffer), 1, fileptr);
+    //     }
+    //     memset(&buffer, 0, sizeof(buffer));
+    // }
+    /////////////////////////////////////////////////// put_request
+    
 
     memset(&buffer, 0, sizeof(buffer));
-    while (recv(sockfd, buffer, BUF_SIZE, 0) > 0)
-    { // receives the file
-        if ((strstr(contentFileType, "text/html")) != NULL)
-        {
-            fprintf(fileptr, "%s", buffer);
-        }
-        else
-        {
-            fwrite(&buffer, sizeof(buffer), 1, fileptr);
-        }
+    while (!feof(fileptr))
+    { // sends the file
+        fread(&buffer, sizeof(buffer), 1, fileptr);
+        send(sockfd, buffer, sizeof(buffer), 0);
         memset(&buffer, 0, sizeof(buffer));
     }
+    printf("File sent...\n");
 
     fclose(fileptr);
+
+    //////////////////////////////////////////////
+
+    //////////////////////////////////////////////
     close(sockfd);
 
     openFile();
@@ -214,13 +230,13 @@ int get_request(char *url, char *port)
     }
 
     printf("Connection successful...\n\n\n");
-    //ptr=path+1;
-    //strcpy(path,ptr);
-    // ptr = strtok(path, "/");
-    // ptr= path+1;
+    // ptr=path+1;
+    // strcpy(path,ptr);
+    //  ptr = strtok(path, "/");
+    //  ptr= path+1;
 
-    ///printf("path: $%s$\n",path);
-    ///printf("ptr: $%s$\n",ptr);
+    /// printf("path: $%s$\n",path);
+    /// printf("ptr: $%s$\n",ptr);
     // char *ptemp = ptr;
     // while(ptemp!=NULL){
     //     printf("$%s$ ",ptemp);
@@ -255,18 +271,18 @@ int put_request(char *url, char *port)
     char *ptr, *host;
     char getrequest[1024];
     struct sockaddr_in addr;
-    char *body="eg.txt";
+    char *body = "eg.txt";
 
     if (isValidIP(url))
     { // when an IP address is given
-        sprintf(getrequest, "PUT / HTTP/1.0\nHOST: %s\n\n%s", url,body);
+        sprintf(getrequest, "PUT / HTTP/1.0\nHOST: %s\n\n%s", url, body);
     }
     else
     { // when a host name is given
         if ((ptr = strstr(url, "/")) == NULL)
         {
             // when hostname does not contain a slash
-            sprintf(getrequest, "PUT / HTTP/1.0\nHOST: %s\n\n%s", url,body);
+            sprintf(getrequest, "PUT / HTTP/1.0\nHOST: %s\n\n%s", url, body);
         }
         else
         {
@@ -276,7 +292,7 @@ int put_request(char *url, char *port)
 
             // printf("path: $%s$\n",path);
             // printf("url: $%s$\n",url);
-            sprintf(getrequest, "PUT %s HTTP/1.0\nHOST: %s\n\n%s", path, url,body);
+            sprintf(getrequest, "PUT %s HTTP/1.0\nHOST: %s\n\n%s", path, url, body);
             // printf("get_req: $%s$\n",getrequest);
         }
     }
@@ -301,13 +317,13 @@ int put_request(char *url, char *port)
     }
 
     printf("Connection successful...\n\n\n");
-    //ptr=path+1;
-    //strcpy(path,ptr);
-    // ptr = strtok(path, "/");
-    // ptr= path+1;
+    // ptr=path+1;
+    // strcpy(path,ptr);
+    //  ptr = strtok(path, "/");
+    //  ptr= path+1;
 
-    ///printf("path: $%s$\n",path);
-    ///printf("ptr: $%s$\n",ptr);
+    /// printf("path: $%s$\n",path);
+    /// printf("ptr: $%s$\n",ptr);
     // char *ptemp = ptr;
     // while(ptemp!=NULL){
     //     printf("$%s$ ",ptemp);
@@ -332,7 +348,7 @@ int put_request(char *url, char *port)
     // printf("\nGG-0-\n");
     // printf("$%s$\n",getrequest);
     // write(sockfd, getrequest, strlen(getrequest));
-    printf("getrequest:%s\n",getrequest);
+    printf("getrequest:%s\n", getrequest);
     send(sockfd, getrequest, strlen(getrequest), 0);
     // printf("\nGG-1-\n");
     return sockfd;
