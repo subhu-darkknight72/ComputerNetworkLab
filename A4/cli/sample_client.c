@@ -23,6 +23,9 @@ char *get_filename(char *url_var);
 void get_func();
 void put_func();
 
+char **get_arg(char *cmd);
+int runExtCmd(char *usr_cmd);
+
 void receiveStr(char *str, int socket_id);
 void sendStr(char *str, int socket_id);
 
@@ -302,17 +305,20 @@ void openFile()
         {
             sprintf(command, "firefox %s", fileName);
         }
-        system(command);
+        // system(command);
+        runExtCmd(command);
     }
     else if ((temp = strstr(contentFileType, "application/pdf")) != NULL)
     {
         sprintf(command, "open -a Preview.app %s", fileName);
-        system(command);
+        // system(command);
+        runExtCmd(command);
     }
     else if ((temp = strstr(contentFileType, "image/jpeg")) != NULL)
     {
         sprintf(command, "open -a Preview.app %s", fileName);
-        system(command);
+        // system(command);
+        runExtCmd(command);
     }
     else
     {
@@ -394,4 +400,36 @@ void receiveStr(char *str, int socket_id)
 		for (i = 0; i < BUF_SIZE; i++, pos++)
 			str[pos] = buf[i];
 	}
+}
+
+char **get_arg(char *cmd){
+    char cmd_copy[1000] = {0};
+    strcpy(cmd_copy, cmd);
+    char **arg;
+
+    char *p = strtok(cmd, " ");
+    int cnt = 0;
+    while (p){
+        p = strtok(NULL, " ");
+        cnt++;
+    }
+    arg = (char **)calloc((cnt + 1), sizeof(char *));
+    p = strtok(cmd_copy, " ");
+    int i = 0;
+    for (; p; i++)
+    {
+        arg[i] = (char *)calloc((strlen(p) + 1), sizeof(char));
+        strcpy(arg[i], p);
+        arg[i][strlen(p)] = '\0';
+        p = strtok(NULL, " ");
+    }
+
+    arg[i] = NULL;
+    return arg;
+}
+
+int runExtCmd(char *usr_cmd){
+    char **arg = get_arg(usr_cmd);
+    execvp(arg[0], arg);
+    return 0;
 }

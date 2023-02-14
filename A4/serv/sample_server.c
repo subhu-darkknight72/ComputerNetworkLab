@@ -23,33 +23,23 @@ void put_func();
 void receiveStr(char *str, int socket_id);
 void sendStr(char *str, int socket_id);
 
+DIR *dirptr;
+FILE *fileptr;
+time_t timenow;
+struct tm *timeinfo;
+
+char *header, *request, *path, *newpath, *host;
+char *dir, *temp;
+int port, sockfd, connfd;
+char get[3], http[9];
+char filepath[MAX_SIZE];
+char http_not_found[] = "HTTP/1.0 404 Not Found\n";
+char http_ok[] = "HTTP/1.0 200 OK\n";
+char buffer[MAX_SIZE];
+char *contentType;
+
 int main(int argc, char **argv)
 {
-    if(strcmp(argv[1],"GET")==0)
-        get_func();
-    else if(strcmp(argv[1],"PUT")==0)
-        put_func();
-    else
-        printf("Invalid command");
-    return 0;
-}
-void get_func(){
-    DIR *dirptr;
-    FILE *fileptr;
-    time_t timenow;
-    struct tm *timeinfo;
-    time(&timenow);
-    timeinfo = localtime(&timenow);
-
-    char *header, *request, *path, *newpath, *host;
-    char *dir, *temp;
-    int port, sockfd, connfd;
-    char get[3], http[9];
-    char filepath[MAX_SIZE];
-    char http_not_found[] = "HTTP/1.0 404 Not Found\n";
-    char http_ok[] = "HTTP/1.0 200 OK\n";
-    char buffer[MAX_SIZE];
-    char *contentType;
 
     // if (argc != 4)
     // {
@@ -57,10 +47,10 @@ void get_func(){
     //     exit(1);
     // }
 
-    header = (char *)malloc(MAX_SIZE * sizeof(char));
-    request = (char *)malloc(MAX_SIZE * sizeof(char));
-    path = (char *)malloc(MAX_SIZE * sizeof(char));
-    newpath = (char *)malloc(MAX_SIZE * sizeof(char));
+    header = (char *)calloc(MAX_SIZE, sizeof(char));
+    request = (char *)calloc(MAX_SIZE, sizeof(char));
+    path = (char *)calloc(MAX_SIZE, sizeof(char));
+    newpath = (char *)calloc(MAX_SIZE, sizeof(char));
 
     // host = argv[1];
     // dir = argv[2];
@@ -78,78 +68,41 @@ void get_func(){
         exit(1);
     }
 
+    time(&timenow);
+    timeinfo = localtime(&timenow);
+
     sockfd = createSocket(host, port);
-    while(1)
+    while (1)
     {
+        header = (char *)calloc(MAX_SIZE, sizeof(char));
+        request = (char *)calloc(MAX_SIZE, sizeof(char));
+        path = (char *)calloc(MAX_SIZE, sizeof(char));
+        newpath = (char *)calloc(MAX_SIZE, sizeof(char));
+
         printf("--------------------------------------------------------\n");
         printf("Waiting for a connection...\n");
         connfd = listenForRequest(sockfd);
         // gets the request from the connection
-        printf("connfd1:%d\n",connfd);
-        int temp_con=connfd;
-        recv(connfd, request, 100, 0);
-        
-        printf("$%s$\n",request);
-        
-        printf("Processing request...\n");
-        
-        // parses request
-        sscanf(request, "%s %s %s", get, path, http);
-        //printf("connfd2:%d\n",connfd); // file descriptor is changing after sscanf command
-        
-        newpath = path + 1; // ignores the first slash
-        sprintf(filepath, "%s/%s", dir, newpath);
-        
-        printf("filepath= $%s$\n",filepath);
-        printf("dir= $%s$\n",dir);
-        printf("newpath= $%s$\n",newpath);
-        
-        contentType = getFileType(newpath);
-        sprintf(header, "Date: %sHostname: %s:%d\nLocation: %s\nContent-Type: %s\n\n", asctime(timeinfo), host, port, newpath, contentType);
-        
-        if ((fileptr = fopen(filepath, "r")) == NULL)
+        printf("connfd1:%d\n", connfd);
+        if(fork() == 0)
         {
-            printf("File not found!\n");
-            connfd=temp_con;
-            send(connfd, http_not_found, strlen(http_not_found), 0); // sends HTTP 404
-        }
-        else
-        {
-            printf("Sending the file...\n");
+            close(sockfd);
+            recv(connfd, request, 100, 0);
 
-            // http_ok = (char *)calloc(10000, sizeof(char));
-            // strcpy(http_ok, "HTTP/1.0 200 OK");
-            printf("$%s$\n",http_ok);
-            //printf("connfd:%d\n",connfd);  // file descriptor is changing
-            connfd=temp_con;
-            ssize_t bytes_sent = send(connfd, http_ok, strlen(http_ok)+1, 0); // sends HTTP 200 OK
-            printf("bytes_sent: %zd, length of http_ok: %lu\n",bytes_sent, strlen(http_ok));
-
-            memset(buffer, 0, MAX_SIZE);
-            recv(connfd, buffer, MAX_SIZE, 0);
-            printf("$%s$\n",buffer);
-            if ((temp = strstr(buffer, "OK")) == NULL)
+            if (strncmp(request, "GET", 3) == 0)
             {
-                printf("Operation aborted by the user!\n");
-                break;
+                get_func();
             }
-            send(connfd, header, strlen(header), 0); // sends the header
-            recv(connfd, buffer, MAX_SIZE, 0);
-            if ((temp = strstr(buffer, "OK")) == NULL)
+            else if (strncmp(request, "GET", 3) == 0)
             {
-                printf("Operation aborted by the user!\n");
-                break;
+                put_func();
             }
-            memset(&buffer, 0, sizeof(buffer));
-            while (!feof(fileptr))
-            { // sends the file
-                fread(&buffer, sizeof(buffer), 1, fileptr);
-                send(connfd, buffer, sizeof(buffer), 0);
-                memset(&buffer, 0, sizeof(buffer));
+            else
+            {
+                printf("Invalid request!\n");
             }
-            printf("File sent...\n");
+            exit(0);
         }
-        printf("Processing completed...\n");
         close(connfd);
     }
 
@@ -158,9 +111,76 @@ void get_func(){
     free(request);
     free(path);
     free(newpath);
+
+    return 0;
 }
 
-void put_func(){
+void get_func()
+{
+    printf("$%s$\n", request);
+
+    printf("Processing request...\n");
+
+    // parses request
+    sscanf(request, "%s %s %s", get, path, http);
+    // printf("connfd2:%d\n",connfd); // file descriptor is changing after sscanf command
+
+    newpath = path + 1; // ignores the first slash
+    sprintf(filepath, "%s/%s", dir, newpath);
+
+    printf("filepath= $%s$\n", filepath);
+    printf("dir= $%s$\n", dir);
+    printf("newpath= $%s$\n", newpath);
+
+    contentType = getFileType(newpath);
+    sprintf(header, "Date: %sHostname: %s:%d\nLocation: %s\nContent-Type: %s\n\n", asctime(timeinfo), host, port, newpath, contentType);
+
+    if ((fileptr = fopen(filepath, "r")) == NULL)
+    {
+        printf("File not found!\n");
+        send(connfd, http_not_found, strlen(http_not_found), 0); // sends HTTP 404
+    }
+    else
+    {
+        printf("Sending the file...\n");
+
+        // http_ok = (char *)calloc(10000, sizeof(char));
+        // strcpy(http_ok, "HTTP/1.0 200 OK");
+        printf("$%s$\n", http_ok);
+        // printf("connfd:%d\n",connfd);  // file descriptor is changing
+        ssize_t bytes_sent = send(connfd, http_ok, strlen(http_ok) + 1, 0); // sends HTTP 200 OK
+        printf("bytes_sent: %zd, length of http_ok: %lu\n", bytes_sent, strlen(http_ok));
+
+        memset(buffer, 0, MAX_SIZE);
+        recv(connfd, buffer, MAX_SIZE, 0);
+        printf("$%s$\n", buffer);
+        if ((temp = strstr(buffer, "OK")) == NULL)
+        {
+            printf("Operation aborted by the user!\n");
+            return;
+        }
+        send(connfd, header, strlen(header), 0); // sends the header
+        recv(connfd, buffer, MAX_SIZE, 0);
+        if ((temp = strstr(buffer, "OK")) == NULL)
+        {
+            printf("Operation aborted by the user!\n");
+            return;
+        }
+        memset(&buffer, 0, sizeof(buffer));
+        while (!feof(fileptr))
+        { // sends the file
+            fread(&buffer, sizeof(buffer), 1, fileptr);
+            send(connfd, buffer, sizeof(buffer), 0);
+            memset(&buffer, 0, sizeof(buffer));
+        }
+        printf("File sent...\n");
+    }
+    printf("Processing completed...\n");
+    close(connfd);
+}
+
+void put_func()
+{
     printf("put_func");
 }
 
@@ -246,42 +266,42 @@ char *getFileType(char *file)
 
 void sendStr(char *str, int socket_id)
 {
-	int pos, i, len = strlen(str);
-	char buf[BUF_SIZE];
+    int pos, i, len = strlen(str);
+    char buf[BUF_SIZE];
 
-	for (pos = 0; pos < len; pos += BUF_SIZE)
-	{
-		for (i = 0; i < BUF_SIZE; i++)
-			buf[i] = ((pos + i) < len) ? str[pos + i] : '\0';
+    for (pos = 0; pos < len; pos += BUF_SIZE)
+    {
+        for (i = 0; i < BUF_SIZE; i++)
+            buf[i] = ((pos + i) < len) ? str[pos + i] : '\0';
 
-		// send(socket_id, buf, BUF_SIZE, 0);
-		if (send(socket_id, buf, BUF_SIZE, 0) < 0)
-		{
-			perror("error in transmission.\n");
-			exit(-1);
-		}
-	}
+        // send(socket_id, buf, BUF_SIZE, 0);
+        if (send(socket_id, buf, BUF_SIZE, 0) < 0)
+        {
+            perror("error in transmission.\n");
+            exit(-1);
+        }
+    }
 }
 
 void receiveStr(char *str, int socket_id)
 {
-	int flag = 0, i, pos = 0;
-	char buf[BUF_SIZE];
-	while (flag == 0)
-	{
-		// recv(socket_id, buf, BUF_SIZE, 0)
-		if (recv(socket_id, buf, BUF_SIZE, 0) < 0)
-		{
-			perror("error in transmission.\n");
-			exit(-1);
-		}
-		// printf("$%s$\n",buf);
+    int flag = 0, i, pos = 0;
+    char buf[BUF_SIZE];
+    while (flag == 0)
+    {
+        // recv(socket_id, buf, BUF_SIZE, 0)
+        if (recv(socket_id, buf, BUF_SIZE, 0) < 0)
+        {
+            perror("error in transmission.\n");
+            exit(-1);
+        }
+        // printf("$%s$\n",buf);
 
-		for (i = 0; i < BUF_SIZE && flag == 0; i++)
-			if (buf[i] == '\0')
-				flag = 1;
+        for (i = 0; i < BUF_SIZE && flag == 0; i++)
+            if (buf[i] == '\0')
+                flag = 1;
 
-		for (i = 0; i < BUF_SIZE; i++, pos++)
-			str[pos] = buf[i];
-	}
+        for (i = 0; i < BUF_SIZE; i++, pos++)
+            str[pos] = buf[i];
+    }
 }
