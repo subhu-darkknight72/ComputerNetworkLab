@@ -41,12 +41,6 @@ char *contentType;
 int main(int argc, char **argv)
 {
 
-    // if (argc != 4)
-    // {
-    //     printf("usage: [host] [directory] [portnumber]\n");
-    //     exit(1);
-    // }
-
     header = (char *)calloc(MAX_SIZE, sizeof(char));
     request = (char *)calloc(MAX_SIZE, sizeof(char));
     path = (char *)calloc(MAX_SIZE, sizeof(char));

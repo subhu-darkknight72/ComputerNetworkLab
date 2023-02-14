@@ -9,6 +9,7 @@
 #include "netdb.h"
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <poll.h>
 
 #define MAX_SIZE 1000000
 #define BUF_SIZE 1024
@@ -98,6 +99,23 @@ void get_func(){
 
     printf("url: $%s$\n",url);
     sockfd = get_request(url, port_n);
+
+    struct pollfd fds[1];
+    fds[0].fd = sockfd;
+    fds[0].events = POLLIN;
+    
+    int timeout = 3000;
+    int p=poll(fds, 1, timeout);
+    if(p==0){
+        printf("Timeout");
+        close(sockfd);
+        exit(1);
+    }
+    else if(p<0){
+        printf("Error");
+        close(sockfd);
+        exit(1);
+    }
     
     memset(buffer, 0, sizeof(buffer));
     ret = recv(sockfd, buffer, MAX_SIZE, 0);
