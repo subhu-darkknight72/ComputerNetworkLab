@@ -28,7 +28,7 @@ FILE *fileptr;
 time_t timenow;
 struct tm *timeinfo;
 
-char *header, *request, *path, *newpath, *host;
+char *header, *request, *path, *newpath, *host,*hst, *body, *ip;
 char *dir, *temp;
 int port, sockfd, connfd;
 char get[3], http[9];
@@ -45,6 +45,9 @@ int main(int argc, char **argv)
     request = (char *)calloc(MAX_SIZE, sizeof(char));
     path = (char *)calloc(MAX_SIZE, sizeof(char));
     newpath = (char *)calloc(MAX_SIZE, sizeof(char));
+    ip = (char *)calloc(MAX_SIZE , sizeof(char));
+    hst = (char *)calloc(MAX_SIZE , sizeof(char));
+    body = (char *)calloc(MAX_SIZE , sizeof(char));
 
     // host = argv[1];
     // dir = argv[2];
@@ -72,6 +75,9 @@ int main(int argc, char **argv)
         request = (char *)calloc(MAX_SIZE, sizeof(char));
         path = (char *)calloc(MAX_SIZE, sizeof(char));
         newpath = (char *)calloc(MAX_SIZE, sizeof(char));
+        ip = (char *)calloc(MAX_SIZE , sizeof(char));
+        hst = (char *)calloc(MAX_SIZE , sizeof(char));
+        body = (char *)calloc(MAX_SIZE , sizeof(char));
 
         printf("--------------------------------------------------------\n");
         printf("Waiting for a connection...\n");
@@ -116,7 +122,7 @@ void get_func()
     printf("Processing request...\n");
 
     // parses request
-    sscanf(request, "%s %s %s", get, path, http);
+    sscanf(request, "%s %s %s\n%s %s\n\n%s", get, path, http, hst, ip, body);
     // printf("connfd2:%d\n",connfd); // file descriptor is changing after sscanf command
 
     newpath = path + 1; // ignores the first slash
