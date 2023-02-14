@@ -263,7 +263,6 @@ void sendStr(char *str, int socket_id)
 	}
 }
 
-
 void receiveStr(char *str, int socket_id)
 {
 	int flag = 0, i, pos = 0;
