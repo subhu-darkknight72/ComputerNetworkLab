@@ -54,6 +54,8 @@ int main(int argc, char **argv)
         get_func();
     }
     else if(argc ==4 && strcmp(argv[1],"PUT")==0){
+        strcpy(file_name, argv[3]);
+        strcpy(url, argv[2]);
         put_func();
     }
     else
@@ -200,6 +202,7 @@ void get_func(){
 }
 
 void put_func(){
+    
     return;
 }
 

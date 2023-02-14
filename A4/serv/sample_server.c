@@ -111,7 +111,7 @@ int main(int argc, char **argv)
 
 void get_func()
 {
-    printf("$%s$\n", request);
+    printf("Request:\n%s\n", request);
 
     printf("Processing request...\n");
 
