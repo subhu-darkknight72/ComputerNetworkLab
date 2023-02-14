@@ -140,6 +140,7 @@ void get_func()
     char *rec;
     rec = (char *)calloc(MAX_SIZE, sizeof(char));
     printf("$%s$\n", request);
+    printf("Request:\n%s\n", request);
 
     printf("Processing request...\n");
 
