@@ -19,9 +19,12 @@ int listenForRequest(int sockfd);
 char *getFileType(char *file);
 int parseHeader(char *header);
 char *splitKeyValue(char *line, int index);
+void openFile();
+
 char contentFileType[100];
 char status[4] = {0, 0, 0, 0};
 char keys[][25] = {"Date: ", "Hostname: ", "Location: ", "Content-Type: "};
+char filepath[BUF_SIZE];
 
 int main(int argc, char **argv)
 {
@@ -36,7 +39,7 @@ int main(int argc, char **argv)
     char *dir, *temp;
     int port, sockfd, connfd;
     char get[3], http[9];
-    char filepath[BUF_SIZE];
+    
     char http_not_found[] = "HTTP/1.0 404 Not Found\n";
     char http_ok[] = "HTTP/1.0 200 OK\n";
     char buffer[BUF_SIZE];
@@ -63,7 +66,7 @@ int main(int argc, char **argv)
     host = (char *)calloc(10000, sizeof(char));
     dir = (char *)calloc(10000, sizeof(char));
     strcpy(host, "127.0.0.1");
-    strcpy(dir, "/mnt/c/Users/gggit/Downloads");
+    strcpy(dir, "/Users/subhu/Desktop/Sem/Sem_6/CN_Lab/ComputerNetworkLab/A4");
     port = atoi("8080");
 
     if ((dirptr = opendir(dir)) == NULL)
@@ -202,6 +205,7 @@ int main(int argc, char **argv)
             }
             printf("Processing completed...\n");
             close(connfd);
+            openFile();
         }
     }
 
@@ -335,4 +339,40 @@ char *splitKeyValue(char *line, int index)
         status[index] = 1;
     }
     return temp;
+}
+
+void openFile()
+{
+    char *temp;
+    char command[100];
+    char fileName[1000];
+    strcpy(fileName, filepath);
+    // printf("File Name: %s\n", fileName);
+    // printf("Content Type: %s\n", contentFileType);
+    if ((temp = strstr(contentFileType, "text/html")) != NULL)
+    {
+        if ((temp = strstr(fileName, ".txt")) != NULL)
+        {
+            sprintf(command, "open -a TextEdit %s", fileName);
+        }
+        else
+        {
+            sprintf(command, "firefox %s", fileName);
+        }
+        system(command);
+    }
+    else if ((temp = strstr(contentFileType, "application/pdf")) != NULL)
+    {
+        sprintf(command, "open -a Preview.app %s", fileName);
+        system(command);
+    }
+    else if ((temp = strstr(contentFileType, "image/jpeg")) != NULL)
+    {
+        sprintf(command, "open -a Preview.app %s", fileName);
+        system(command);
+    }
+    else
+    {
+        printf("The filetype %s is not supported. Failed to open %s!\n", contentFileType, fileName);
+    }
 }
