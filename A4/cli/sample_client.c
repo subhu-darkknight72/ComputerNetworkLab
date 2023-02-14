@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <poll.h>
+#include<time.h>
 
 #define MAX_SIZE 1000000
 #define BUF_SIZE 1024
@@ -20,6 +21,9 @@ int parseHeader(char *header);
 char *splitKeyValue(char *line, int index);
 void openFile();
 char *get_filename(char *url_var);
+char* get_date();
+char *get_date_mod();
+
 
 void get_func();
 void put_func();
@@ -29,6 +33,7 @@ int runExtCmd(char *usr_cmd);
 
 void receiveStr(char *str, int socket_id);
 void sendStr(char *str, int socket_id);
+char *getFileType(char *file);
 
 FILE *fileptr;
 char keys[][25] = {"Date: ", "Hostname: ", "Location: ", "Content-Type: "};
@@ -212,14 +217,14 @@ int get_request(char *url, char *port)
 
     if (isValidIP(url))
     { // when an IP address is given
-        sprintf(getrequest, "GET / HTTP/1.0\nHOST: %s\n\n", url);
+        sprintf(getrequest, "GET / HTTP/1.0\nHOST: %s\nCONNECTION: close\nDATE:%s\nACCEPT:%s\nACCEPT-LANGUAGE: en-us\nIF-MODIFIED-SINCE:%s\nCONTENT-LANGUAGE:en-us\nCONTENT-TYPE:%s\n\n", url, get_date(),getFileType(url),get_date_mod(),getFileType(url));
     }
     else
     { // when a host name is given
         if ((ptr = strstr(url, "/")) == NULL)
         {
             // when hostname does not contain a slash
-            sprintf(getrequest, "GET / HTTP/1.0\nHOST: %s\n\n", url);
+            sprintf(getrequest, "GET / HTTP/1.0\nHOST: %s\nCONNECTION: close\nDATE:%s\nACCEPT:%s\nACCEPT-LANGUAGE: en-us\nIF-MODIFIED-SINCE:%s\nCONTENT-LANGUAGE:en-us\nCONTENT-TYPE:%s\n\n", url, get_date(),getFileType(url),get_date_mod(),getFileType(url));
         }
         else
         {
@@ -229,7 +234,7 @@ int get_request(char *url, char *port)
 
             // printf("path: $%s$\n",path);
             // printf("url: $%s$\n",url);
-            sprintf(getrequest, "GET %s HTTP/1.0\nHOST: %s\n\n", path, url);
+            sprintf(getrequest, "GET %s HTTP/1.0\nHOST: %s\nCONNECTION: close\nDATE:%s\nACCEPT:%s\nACCEPT-LANGUAGE: en-us\nIF-MODIFIED-SINCE:%s\nCONTENT-LANGUAGE:en-us\nCONTENT-TYPE:%s\n\n", path, url, get_date(),getFileType(url),get_date_mod(),getFileType(url));
             // printf("get_req: $%s$\n",getrequest);
         }
     }
@@ -450,4 +455,45 @@ int runExtCmd(char *usr_cmd){
     char **arg = get_arg(usr_cmd);
     execvp(arg[0], arg);
     return 0;
+}
+char* get_date(){
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    char *ans;
+    ans = (char *)calloc(200, sizeof(char));
+    // printf("%d-%d-%d %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    sprintf(ans, "%d-%d-%d %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    return ans;
+}
+char *getFileType(char *file)
+{
+    char *temp;
+    if ((temp = strstr(file, ".html")) != NULL)
+    {
+        return "text/html";
+    }
+    else if ((temp = strstr(file, ".pdf")) != NULL)
+    {
+        return "application/pdf";
+    }
+    else if ((temp = strstr(file, ".txt")) != NULL)
+    {
+        return "text/html";
+    }
+    else if (((temp = strstr(file, ".jpeg")) != NULL) || ((temp = strstr(file, ".heic")) != NULL))
+    {
+        return "image/jpeg";
+    }
+    return "Error aa gaya!!";
+}
+
+//get two day previous date 
+char *get_date_mod(){
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    char *ans;
+    ans = (char *)calloc(200, sizeof(char));
+    // printf("%d-%d-%d %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    sprintf(ans, "%d-%d-%d %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday-2, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    return ans;
 }

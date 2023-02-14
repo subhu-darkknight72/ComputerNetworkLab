@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 
 char *port_n;
 char *get_filename(char *url_var){
@@ -71,6 +72,16 @@ int runExtCmd0(char *usr_cmd){
     return 0;
 }
 
+char* get_date(){
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    char *ans;
+    ans = (char *)calloc(200, sizeof(char));
+    // printf("%d-%d-%d %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    sprintf(ans, "%d-%d-%d %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    return ans;
+}
+
 int main()
 {
     printf("Hello, World!\n");
@@ -84,10 +95,12 @@ int main()
     // printf("filename: %s\n", f_name);
     // printf("port: %s\n", port_n);
 
-    char cmd[1000];
+    // char cmd[1000];
 
-    char *file="tmpfile.csv";
-    strcpy(cmd, "lsof ./");
-    runExtCmd0(cmd);
+    // char *file="tmpfile.csv";
+    // strcpy(cmd, "lsof ./");
+    // runExtCmd0(cmd);
+
+    printf("date: %s\n", get_date());
     return 0;
 }

@@ -28,7 +28,7 @@ FILE *fileptr;
 time_t timenow;
 struct tm *timeinfo;
 
-char *header, *request, *path, *newpath, *host,*hst, *body, *ip;
+char *header, *request, *path, *newpath, *host, *hst, *body, *ip, *connection_string, *close_string, *date_string, *date_time, *accept_string, *accept_value;
 char *dir, *temp;
 int port, sockfd, connfd;
 char get[3], http[9];
@@ -38,6 +38,9 @@ char http_ok[] = "HTTP/1.0 200 OK\n";
 char buffer[MAX_SIZE];
 char *contentType;
 
+char* cli_ip;
+char* cli_port;
+
 int main(int argc, char **argv)
 {
 
@@ -45,9 +48,9 @@ int main(int argc, char **argv)
     request = (char *)calloc(MAX_SIZE, sizeof(char));
     path = (char *)calloc(MAX_SIZE, sizeof(char));
     newpath = (char *)calloc(MAX_SIZE, sizeof(char));
-    ip = (char *)calloc(MAX_SIZE , sizeof(char));
-    hst = (char *)calloc(MAX_SIZE , sizeof(char));
-    body = (char *)calloc(MAX_SIZE , sizeof(char));
+    ip = (char *)calloc(MAX_SIZE, sizeof(char));
+    hst = (char *)calloc(MAX_SIZE, sizeof(char));
+    body = (char *)calloc(MAX_SIZE, sizeof(char));
 
     // host = argv[1];
     // dir = argv[2];
@@ -75,16 +78,33 @@ int main(int argc, char **argv)
         request = (char *)calloc(MAX_SIZE, sizeof(char));
         path = (char *)calloc(MAX_SIZE, sizeof(char));
         newpath = (char *)calloc(MAX_SIZE, sizeof(char));
-        ip = (char *)calloc(MAX_SIZE , sizeof(char));
-        hst = (char *)calloc(MAX_SIZE , sizeof(char));
-        body = (char *)calloc(MAX_SIZE , sizeof(char));
+        ip = (char *)calloc(MAX_SIZE, sizeof(char));
+        hst = (char *)calloc(MAX_SIZE, sizeof(char));
+        body = (char *)calloc(MAX_SIZE, sizeof(char));
+        connection_string = (char *)calloc(MAX_SIZE, sizeof(char));
+        close_string = (char *)calloc(MAX_SIZE, sizeof(char));
+        date_string = (char *)calloc(MAX_SIZE, sizeof(char));
+        date_time = (char *)calloc(MAX_SIZE, sizeof(char));
+        accept_string = (char *)calloc(MAX_SIZE, sizeof(char));
+        accept_value = (char *)calloc(MAX_SIZE, sizeof(char));
+
+        cli_ip = (char *)calloc(MAX_SIZE, sizeof(char));
+        cli_port = (char *)calloc(MAX_SIZE, sizeof(char));
 
         printf("--------------------------------------------------------\n");
         printf("Waiting for a connection...\n");
         connfd = listenForRequest(sockfd);
         // gets the request from the connection
         printf("connfd1:%d\n", connfd);
-        if(fork() == 0)
+
+        // get client socket ip and port
+        struct sockaddr_in addr;
+        socklen_t addr_size = sizeof(struct sockaddr_in);
+        getpeername(connfd, (struct sockaddr *)&addr, &addr_size);
+        strcpy(cli_ip, inet_ntoa(addr.sin_addr));
+        sprintf(cli_port, "%d", ntohs(addr.sin_port));
+
+        if (fork() == 0)
         {
             close(sockfd);
             recv(connfd, request, 100, 0);
@@ -93,7 +113,7 @@ int main(int argc, char **argv)
             {
                 get_func();
             }
-            else if (strncmp(request, "GET", 3) == 0)
+            else if (strncmp(request, "PUT", 3) == 0)
             {
                 put_func();
             }
@@ -117,13 +137,16 @@ int main(int argc, char **argv)
 
 void get_func()
 {
+    char *rec;
+    rec = (char *)calloc(MAX_SIZE, sizeof(char));
     printf("$%s$\n", request);
 
     printf("Processing request...\n");
 
     // parses request
-    sscanf(request, "%s %s %s\n%s %s\n\n%s", get, path, http, hst, ip, body);
+    sscanf(request, "%s %s %s\n%s %s\n%s %s\n%s %s\n%s %s\n%s", get, path, http, hst, ip, connection_string, close_string, date_string, date_time, accept_string, accept_value, body);
     // printf("connfd2:%d\n",connfd); // file descriptor is changing after sscanf command
+    sprintf(rec, "%s:%s:%s:%s:GET:%s\n", date_time, cli_ip, cli_port,path);
 
     newpath = path + 1; // ignores the first slash
     sprintf(filepath, "%s/%s", dir, newpath);
@@ -131,6 +154,8 @@ void get_func()
     printf("filepath= $%s$\n", filepath);
     printf("dir= $%s$\n", dir);
     printf("newpath= $%s$\n", newpath);
+    printf("date=%s", date_time);
+    printf("accept_value=%s", accept_value);
 
     contentType = getFileType(newpath);
     sprintf(header, "Date: %sHostname: %s:%d\nLocation: %s\nContent-Type: %s\n\n", asctime(timeinfo), host, port, newpath, contentType);
