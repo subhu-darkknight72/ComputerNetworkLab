@@ -16,6 +16,7 @@
 #define BUF_SIZE 1024
 
 int get_request(char *url, char *port);
+int put_request(char *url, char *port);
 int isValidIP(char *ip);
 int parseHeader(char *header);
 char *splitKeyValue(char *line, int index);
@@ -23,7 +24,7 @@ void openFile();
 char *get_filename(char *url_var);
 char* get_date();
 char *get_date_mod();
-
+char *getFileType(char *file);
 
 void get_func();
 void put_func();
@@ -33,15 +34,15 @@ int runExtCmd(char *usr_cmd);
 
 void receiveStr(char *str, int socket_id);
 void sendStr(char *str, int socket_id);
-char *getFileType(char *file);
 
 FILE *fileptr;
 char keys[][25] = {"Date: ", "Hostname: ", "Location: ", "Content-Type: "};
 char status[4] = {0, 0, 0, 0};
-char contentFileType[100];
+char *contentFileType;
 char path[1000];
 char *file_name;
 char *url, *port_n;
+char *header, *host;
 
 int main(int argc, char **argv)
 {
@@ -70,7 +71,7 @@ int main(int argc, char **argv)
 
 void get_func(){
     struct sockaddr_in addr, cl_addr;
-    int sockfd, ret;
+    int sockfd, ret; 
     struct hostent *server;
     char *temp;
     int portNumber;
@@ -84,7 +85,9 @@ void get_func(){
     int sPos, ePos;
 
     printf("url: $%s$\n",url);
-    //  ./client GET 127.0.0.1/folder/TimeTable_Sem6.pdf
+    contentFileType = (char *)calloc(100, sizeof(char));
+    contentFileType = getFileType(file_name);
+
     portNumber = atoi(port_n);
 
     // checking the protocol specified
@@ -126,7 +129,7 @@ void get_func(){
     
     memset(buffer, 0, sizeof(buffer));
     ret = recv(sockfd, buffer, MAX_SIZE, 0);
-    printf("ret: %d buffer1: $%s$\n",ret,buffer);
+    // printf("ret: %d buffer1: $%s$\n",ret,buffer);
     if (ret < 0)
     {
         printf("Error receiving HTTP status!\n");
@@ -153,7 +156,7 @@ void get_func(){
     }
     else
     {
-        printf("buffer2: %s\n", buffer);
+        // printf("buffer2: %s\n", buffer);
 
         if (parseHeader(buffer) == 0)
         {
@@ -207,7 +210,116 @@ void get_func(){
 }
 
 void put_func(){
+    struct sockaddr_in addr, cl_addr;
+    int sockfd, ret;
+    struct hostent *server;
+    char *temp;
+    int portNumber;
+
+    printf("url: $%s$\n",url);
+    contentFileType = (char *)calloc(100, sizeof(char));
+    contentFileType = getFileType(file_name);
     
+    char status_ok[] = "OK";
+    char buffer[MAX_SIZE];
+    char http_not_found[] = "HTTP/1.0 404 Not Found";
+    char http_ok[] = "HTTP/1.0 200 OK";
+    char location[] = "Location: ";
+    char contentType[] = "Content-Type: ";
+    int sPos, ePos;
+
+    printf("url: $%s$\n",url);
+    //  ./client GET 127.0.0.1/folder/TimeTable_Sem6.pdf
+    portNumber = atoi(port_n);
+
+    // checking the protocol specified
+    if ((temp = strstr(url, "http://")) != NULL)
+    {
+        url = url + 7;
+    }
+    else if ((temp = strstr(url, "https://")) != NULL)
+    {
+        url = url + 8;
+    }
+
+    // checking the port number
+    if (portNumber > 65536 || portNumber < 0)
+    {
+        printf("Invalid Port Number!");
+        exit(1);
+    }
+
+    printf("url: $%s$\n",url);
+    sockfd = put_request(url, port_n);
+
+    struct pollfd fds[1];
+    fds[0].fd = sockfd;
+    fds[0].events = POLLIN;
+    
+    int timeout = 3000;
+    int p=poll(fds, 1, timeout);
+    if(p==0){
+        printf("Timeout");
+        close(sockfd);
+        exit(1);
+    }
+    else if(p<0){
+        printf("Error");
+        close(sockfd);
+        exit(1);
+    }
+
+    if ((fileptr = fopen(file_name, "r")) == NULL)
+    {
+        printf("File not found!\n");
+        send(sockfd, http_not_found, strlen(http_not_found), 0); // sends HTTP 404
+    }
+    else
+    {
+        printf("Sending the file...\n");
+
+        // http_ok = (char *)calloc(10000, sizeof(char));
+        // strcpy(http_ok, "HTTP/1.0 200 OK");
+        printf("$%s$\n", http_ok);
+        // printf("sockfd:%d\n",sockfd);  // file descriptor is changing
+        ssize_t bytes_sent = send(sockfd, http_ok, strlen(http_ok) + 1, 0); // sends HTTP 200 OK
+        printf("bytes_sent: %zd, length of http_ok: %lu\n", bytes_sent, strlen(http_ok));
+
+        memset(buffer, 0, MAX_SIZE);
+        recv(sockfd, buffer, MAX_SIZE, 0);
+        printf("$%s$\n", buffer);
+        if ((temp = strstr(buffer, "OK")) == NULL)
+        {
+            printf("Operation aborted by the user!\n");
+            return;
+        }
+
+        time_t timenow;
+        header = (char *)calloc(MAX_SIZE, sizeof(char));
+        time(&timenow);
+        struct tm *timeinfo = localtime(&timenow);
+
+        strcpy(host, "127.0.0.1");
+        //strcpy(host, "127.0.0.1");
+        sprintf(header, "Date: %sHostname: %s:%s\nLocation: %s\nContent-Type: %s\n\n", asctime(timeinfo), host, port_n, file_name, contentType);
+
+
+        send(sockfd, header, strlen(header), 0); // sends the header
+        recv(sockfd, buffer, MAX_SIZE, 0);
+        if ((temp = strstr(buffer, "OK")) == NULL)
+        {
+            printf("Operation aborted by the user!\n");
+            return;
+        }
+        memset(&buffer, 0, sizeof(buffer));
+        while (!feof(fileptr))
+        { // sends the file
+            fread(&buffer, sizeof(buffer), 1, fileptr);
+            send(sockfd, buffer, sizeof(buffer), 0);
+            memset(&buffer, 0, sizeof(buffer));
+        }
+        printf("File sent...\n");
+    }
     return;
 }
 
@@ -220,14 +332,14 @@ int get_request(char *url, char *port)
 
     if (isValidIP(url))
     { // when an IP address is given
-        sprintf(getrequest, "GET / HTTP/1.0\nHOST: %s\nCONNECTION: close\nDATE:%s\nACCEPT:%s\nACCEPT-LANGUAGE: en-us\nIF-MODIFIED-SINCE:%s\nCONTENT-LANGUAGE:en-us\nCONTENT-TYPE:%s\n\n", url, get_date(),getFileType(url),get_date_mod(),getFileType(url));
+        sprintf(getrequest, "GET / HTTP/1.0\nHOST: %s\nCONNECTION: close\nDATE:%s\nACCEPT:%s\nACCEPT-LANGUAGE: en-us\nIF-MODIFIED-SINCE:%s\nCONTENT-LANGUAGE:en-us\nCONTENT-TYPE:%s\n\n", url, get_date(),contentFileType,get_date_mod(),contentFileType);
     }
     else
     { // when a host name is given
         if ((ptr = strstr(url, "/")) == NULL)
         {
             // when hostname does not contain a slash
-            sprintf(getrequest, "GET / HTTP/1.0\nHOST: %s\nCONNECTION: close\nDATE:%s\nACCEPT:%s\nACCEPT-LANGUAGE: en-us\nIF-MODIFIED-SINCE:%s\nCONTENT-LANGUAGE:en-us\nCONTENT-TYPE:%s\n\n", url, get_date(),getFileType(url),get_date_mod(),getFileType(url));
+            sprintf(getrequest, "GET / HTTP/1.0\nHOST: %s\nCONNECTION: close\nDATE:%s\nACCEPT:%s\nACCEPT-LANGUAGE: en-us\nIF-MODIFIED-SINCE:%s\nCONTENT-LANGUAGE:en-us\nCONTENT-TYPE:%s\n\n", url, get_date(),contentFileType,get_date_mod(),contentFileType);
         }
         else
         {
@@ -237,7 +349,7 @@ int get_request(char *url, char *port)
 
             // printf("path: $%s$\n",path);
             // printf("url: $%s$\n",url);
-            sprintf(getrequest, "GET %s HTTP/1.0\nHOST: %s\nCONNECTION: close\nDATE:%s\nACCEPT:%s\nACCEPT-LANGUAGE: en-us\nIF-MODIFIED-SINCE:%s\nCONTENT-LANGUAGE:en-us\nCONTENT-TYPE:%s\n\n", path, url, get_date(),getFileType(url),get_date_mod(),getFileType(url));
+            sprintf(getrequest, "GET %s HTTP/1.0\nHOST: %s\nCONNECTION: close\nDATE:%s\nACCEPT:%s\nACCEPT-LANGUAGE: en-us\nIF-MODIFIED-SINCE:%s\nCONTENT-LANGUAGE:en-us\nCONTENT-TYPE:%s\n\n", path, url, get_date(),contentFileType,get_date_mod(),contentFileType);
             // printf("get_req: $%s$\n",getrequest);
         }
     }
@@ -266,12 +378,19 @@ int get_request(char *url, char *port)
     return sockfd;
 }
 
+int put_request(char *url, char *port){
+    return 0;
+}
+
 int isValidIP(char *ip)
 {
     struct sockaddr_in addr;
     int valid = inet_pton(AF_INET, ip, &(addr.sin_addr));
     return valid != 0;
 }
+// parse the header and return 1 if there is an error
+
+
 
 int parseHeader(char *header)
 {

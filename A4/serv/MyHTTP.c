@@ -18,6 +18,7 @@
 int createSocket(char *host, int port);
 int listenForRequest(int sockfd);
 char *getFileType(char *file);
+char *get_filename(char *url_var);
 void get_func();
 void put_func();
 void receiveStr(char *str, int socket_id);
@@ -30,13 +31,14 @@ struct tm *timeinfo;
 
 char *header, *request, *path, *newpath, *host, *hst, *body, *ip, *connection_string, *close_string, *date_string, *date_time, *accept_string, *accept_value;
 char *dir, *temp;
-int port, sockfd, connfd;
+int port, sockfd, connfd, ret;
 char get[3], http[9];
 char filepath[MAX_SIZE];
 char http_not_found[] = "HTTP/1.0 404 Not Found\n";
 char http_ok[] = "HTTP/1.0 200 OK\n";
 char buffer[MAX_SIZE];
-char *contentType;
+char *file_name;
+char *contentType,  *port_n;
 
 char* cli_ip;
 char* cli_port;
@@ -95,7 +97,7 @@ int main(int argc, char **argv)
         printf("Waiting for a connection...\n");
         connfd = listenForRequest(sockfd);
         // gets the request from the connection
-        printf("connfd1:%d\n", connfd);
+        // printf("connfd1:%d\n", connfd);
 
         // get client socket ip and port
         struct sockaddr_in addr;
@@ -107,7 +109,7 @@ int main(int argc, char **argv)
         if (fork() == 0)
         {
             close(sockfd);
-            recv(connfd, request, 100, 0);
+            recv(connfd, request, MAX_SIZE, 0);
 
             if (strncmp(request, "GET", 3) == 0)
             {
@@ -139,7 +141,7 @@ void get_func()
 {
     char *rec;
     rec = (char *)calloc(MAX_SIZE, sizeof(char));
-    printf("$%s$\n", request);
+    // printf("$%s$\n", request);
     printf("Request:\n%s\n", request);
 
     printf("Processing request...\n");
@@ -147,20 +149,26 @@ void get_func()
     // parses request
     sscanf(request, "%s %s %s\n%s %s\n%s %s\n%s %s\n%s %s\n%s", get, path, http, hst, ip, connection_string, close_string, date_string, date_time, accept_string, accept_value, body);
     // printf("connfd2:%d\n",connfd); // file descriptor is changing after sscanf command
-    sprintf(rec, "%s:%s:%s:%s:GET:%s\n", date_time, cli_ip, cli_port,path);
+    sprintf(rec, "%s:%s:%s:GET:%s\n", date_time, cli_ip, cli_port,path);
+    // write rec into log file
+    FILE *fp;
+    fp = fopen("log.txt", "a");
+    fputs(rec, fp);
+    fclose(fp);
+
 
     newpath = path + 1; // ignores the first slash
     sprintf(filepath, "%s/%s", dir, newpath);
 
-    printf("filepath= $%s$\n", filepath);
-    printf("dir= $%s$\n", dir);
-    printf("newpath= $%s$\n", newpath);
-    printf("date=%s", date_time);
-    printf("accept_value=%s", accept_value);
+    // printf("filepath= $%s$\n", filepath);
+    // printf("dir= $%s$\n", dir);
+    // printf("newpath= $%s$\n", newpath);
+    // printf("date=%s", date_time);
+    // printf("accept_value=%s", accept_value);
 
     contentType = getFileType(newpath);
     sprintf(header, "Date: %sHostname: %s:%d\nLocation: %s\nContent-Type: %s\n\n", asctime(timeinfo), host, port, newpath, contentType);
-
+    
     if ((fileptr = fopen(filepath, "r")) == NULL)
     {
         printf("File not found!\n");
@@ -172,14 +180,14 @@ void get_func()
 
         // http_ok = (char *)calloc(10000, sizeof(char));
         // strcpy(http_ok, "HTTP/1.0 200 OK");
-        printf("$%s$\n", http_ok);
+        // printf("$%s$\n", http_ok);
         // printf("connfd:%d\n",connfd);  // file descriptor is changing
         ssize_t bytes_sent = send(connfd, http_ok, strlen(http_ok) + 1, 0); // sends HTTP 200 OK
-        printf("bytes_sent: %zd, length of http_ok: %lu\n", bytes_sent, strlen(http_ok));
+        // printf("bytes_sent: %zd, length of http_ok: %lu\n", bytes_sent, strlen(http_ok));
 
         memset(buffer, 0, MAX_SIZE);
         recv(connfd, buffer, MAX_SIZE, 0);
-        printf("$%s$\n", buffer);
+        // printf("$%s$\n", buffer);
         if ((temp = strstr(buffer, "OK")) == NULL)
         {
             printf("Operation aborted by the user!\n");
@@ -207,7 +215,61 @@ void get_func()
 
 void put_func()
 {
-    printf("put_func");
+    char *rec;
+    rec = (char *)calloc(MAX_SIZE, sizeof(char));
+    // printf("put_func");
+    printf("Request:\n%s\n", request);
+    printf("Processing request...\n");
+
+    // parses request
+    sscanf(request, "%s %s %s\n%s %s\n%s %s\n%s %s\n%s %s\n%s", get, path, http, hst, ip, connection_string, close_string, date_string, date_time, accept_string, accept_value, body);
+    sprintf(rec, "%s:%s:%s:PUT:%s\n", date_time, cli_ip, cli_port,path);
+    FILE *fp;
+    fp = fopen("log.txt", "a");
+    fputs(rec, fp);
+    fclose(fp);
+    
+    newpath = path + 1; // ignores the first slash
+    sprintf(filepath, "%s%s", dir, newpath);
+
+    printf("filepath= $%s$\n", filepath);
+    printf("dir= $%s$\n", dir);
+    printf("newpath= $%s$\n", newpath);
+    printf("date=%s", date_time);
+    printf("accept_value=%s", accept_value);
+
+    contentType = getFileType(newpath);
+    sprintf(header, "Date: %sHostname: %s:%d\nLocation: %s\nContent-Type: %s\n\n", asctime(timeinfo), host, port, newpath, contentType);
+
+    fileptr = fopen(file_name, "w");
+    if (fileptr == NULL)
+    {
+        printf("Error opening file!\n");
+        close(sockfd);
+        return;
+    }
+    else
+        printf("opened file!\n");
+
+    file_name = (char *)calloc(1000, sizeof(char));
+    strcpy(file_name, get_filename(path));
+
+    memset(&buffer, 0, sizeof(buffer));
+    while (recv(sockfd, buffer, MAX_SIZE, 0) > 0)
+    { // receives the file
+        if ((strstr(contentType, "text/html")) != NULL)
+        {
+            fprintf(fileptr, "%s", buffer);
+        }
+        else
+        {
+            fwrite(&buffer, sizeof(buffer), 1, fileptr);
+        }
+        memset(&buffer, 0, sizeof(buffer));
+    }
+
+    fclose(fileptr);
+    close(sockfd);
 }
 
 int createSocket(char *host, int port)
@@ -288,6 +350,40 @@ char *getFileType(char *file)
         return "image/jpeg";
     }
     return "Error aa gaya!!";
+}
+
+char *get_filename(char *url_var){
+    char *ptr, *host_var, *ans;
+    char pth[1024];
+    if ((ptr = strstr(url_var, "/")) == NULL)
+    {
+        // when hostname does not contain a slash
+        printf("no slash");
+        return url_var;
+    }
+    else
+    {
+        // when hostname contains a slash, it is a pth to file
+        char *fname;
+        fname = (char *)calloc(1024, sizeof(char));
+        ans = (char *)calloc(1024, sizeof(char));
+        strcpy(pth, ptr);
+        host_var = strtok(url_var, "/");
+        while (host_var != NULL)
+        {   
+            strcpy(fname, host_var);
+            // printf("host_var: %s\n", host_var);
+            host_var = strtok(NULL, "/");
+        }
+        fname = strtok(fname, ":");
+        strcpy(ans, fname);
+        fname = strtok(NULL, ":");
+        if(fname!=NULL){
+            strcpy(port_n, fname);
+        }
+        // printf("pth: %s", fname);
+        return ans;
+    }
 }
 
 void sendStr(char *str, int socket_id)
