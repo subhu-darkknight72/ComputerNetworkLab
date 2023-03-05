@@ -1,5 +1,8 @@
-main : mysocket.a
-	gcc -o main main.c mysocket.a
+server : mysocket.a
+	gcc -o server main_server.c mysocket.a; ./server
+
+client : mysocket.a
+	gcc -o client main_client.c mysocket.a; ./client
 
 mysocket.a : mysocket.o
 	ar rcs mysocket.a mysocket.o

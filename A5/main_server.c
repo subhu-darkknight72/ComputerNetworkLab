@@ -66,8 +66,7 @@ int main()
 		   system call is stored in "newsockfd".
 		*/
 		clilen = sizeof(cli_addr);
-		newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr,
-					&clilen) ;
+		newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, (socklen_t *)&clilen) ;
 
 		if (newsockfd < 0) {
 			perror("Accept error\n");
@@ -80,11 +79,10 @@ int main()
 		*/
 		
 		// strcpy(buf,"Message from server");
-		time_t mytime = time(NULL);
-    	char * time_str = ctime(&mytime);
-    	time_str[strlen(time_str)-1] = '\0';
-
-		send(newsockfd, time_str, strlen(time_str) + 1, 0);
+		
+		memset(buf, 0, 100);
+		strcpy(buf, "Message from server");
+		send(newsockfd, buf, strlen(buf) + 1, 0);
 
 		/* We now receive a message from the client. For this example
   		   we make an assumption that the entire message sent from the
