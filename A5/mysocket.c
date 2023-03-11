@@ -55,7 +55,7 @@ mssg_table* mssg_table_init(int size){
 }
 
 void mssg_table_read(mssg_table *smt, char *mssg){
-    while(smt->size == 0);
+    while(smt->size == 0);// wait till smt->size > 0
 
     int pos = smt->read_ptr;
     strcpy(smt->table[pos],mssg);
@@ -66,7 +66,7 @@ void mssg_table_read(mssg_table *smt, char *mssg){
 }
 
 void mssg_table_write(mssg_table *smt, char *mssg){
-    while(smt->size == BUF_SIZE);
+    while(smt->size == BUF_SIZE);// wait till smt->size < BUF_SIZE
 
     int pos = smt->write_ptr;
     strcpy(mssg,smt->table[pos]);
