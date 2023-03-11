@@ -19,6 +19,32 @@ typedef struct mssg_table{
     char **table;
 } mssg_table;
 
+typedef struct socket_desc{
+    int sockfd;
+    int domain;
+    int type;
+    int protocol;
+    struct sockaddr_in *addr;
+    socklen_t addrlen;
+    int backlog;
+    int flags;
+    int ret;
+    int n;
+    char *buf;
+    size_t len;
+
+    mssg_table *smt;
+    mssg_table *rmt;
+} socket_desc;
+
+//  link list of all socket_desc
+typedef struct socket_list{
+    socket_desc *sd;
+    struct socket_list *next;
+} socket_list;
+
+socket_list *sl = NULL;
+
 mssg_table* mssg_table_init(int size){
     mssg_table *smt = (mssg_table *)calloc(1,sizeof(mssg_table));
     smt->write_ptr = 0;
@@ -50,29 +76,6 @@ void mssg_table_write(mssg_table *smt, char *mssg){
     smt->size = smt->size + 1;
 }
 
-typedef struct socket_desc{
-    int sockfd;
-    int domain;
-    int type;
-    int protocol;
-    struct sockaddr_in *addr;
-    socklen_t addrlen;
-    int backlog;
-    int flags;
-    int ret;
-    int n;
-    char *buf;
-    size_t len;
-
-    mssg_table *smt;
-    mssg_table *rmt;
-} socket_desc;
-
-//  link list of all socket_desc
-typedef struct socket_list{
-    socket_desc *sd;
-    struct socket_list *next;
-} socket_list;
 
 socket_list *socket_list_init(){
     socket_list *sl = (socket_list *)calloc(1,sizeof(socket_list));
@@ -141,14 +144,29 @@ int my_socket(int domain, int type, int protocol){
 }
 
 int my_send(int sockfd, const void *buf, size_t len, int flags){
-
-    return send(sockfd, buf, len, flags);
+    // search for socket_desc
+    socket_desc *sd = socket_list_find(sl, sockfd);
+    if(sd == NULL){
+        printf("Socket not found\n");
+        return -1;
+    }
     
+    // write to mssg_table
+    mssg_table_write(sd->smt, (char *)buf);
+    return len;
 }
 
 ssize_t my_recv(int sockfd, void *buf, size_t len, int flags){
-    ssize_t n =  recvfrom(sockfd, buf, len, flags, NULL, NULL);
-    return n;
+    // search for socket_desc
+    socket_desc *sd = socket_list_find(sl, sockfd);
+    if(sd == NULL){
+        printf("Socket not found\n");
+        return -1;
+    }
+    
+    // read from mssg_table
+    mssg_table_read(sd->rmt, (char *)buf);
+    return len;
 }
 
 int my_close(int sockfd){
