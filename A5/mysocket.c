@@ -65,7 +65,71 @@ typedef struct socket_desc{
     size_t len;
 
     mssg_table *smt;
+    mssg_table *rmt;
 } socket_desc;
+
+//  link list of all socket_desc
+typedef struct socket_list{
+    socket_desc *sd;
+    struct socket_list *next;
+} socket_list;
+
+socket_list *socket_list_init(){
+    socket_list *sl = (socket_list *)calloc(1,sizeof(socket_list));
+    sl->sd = NULL;
+    sl->next = NULL;
+    return sl;
+}
+
+void socket_list_add(socket_list *sl, socket_desc *sd){
+    socket_list *new_node = (socket_list *)calloc(1,sizeof(socket_list));
+    new_node->sd = sd;
+    new_node->next = sl->next;
+    sl->next = new_node;
+}
+
+socket_desc* socket_list_find(socket_list *sl, int sockfd){
+    socket_list *temp = sl->next;
+    while(temp != NULL){
+        if(temp->sd->sockfd == sockfd)
+            return temp->sd;
+        temp = temp->next;
+    }
+    return NULL;
+}
+
+void socket_list_remove(socket_list *sl, int sockfd){
+    socket_list *temp = sl->next;
+    socket_list *prev = sl;
+    while(temp != NULL){
+        if(temp->sd->sockfd == sockfd){
+            prev->next = temp->next;
+            free(temp);
+            return;
+        }
+        prev = temp;
+        temp = temp->next;
+    }
+}
+
+void socket_list_print(socket_list *sl){
+    socket_list *temp = sl->next;
+    while(temp != NULL){
+        printf("sockfd = %d \n",temp->sd->sockfd);
+        temp = temp->next;
+    }
+}
+
+void socket_list_free(socket_list *sl){
+    socket_list *temp = sl->next;
+    while(temp != NULL){
+        socket_list *temp2 = temp->next;
+        free(temp);
+        temp = temp2;
+    }
+    free(sl);
+}
+
 
 int my_socket(int domain, int type, int protocol){
     int sockfd;
@@ -79,13 +143,7 @@ int my_socket(int domain, int type, int protocol){
 int my_send(int sockfd, const void *buf, size_t len, int flags){
 
     return send(sockfd, buf, len, flags);
-
-    // int ret = send(sockfd, buf, len, flags);
-    // if ( ret< 0) {
-    //     perror("Unable to send data\n");
-    //     exit(0);
-    // }
-    // return ret;
+    
 }
 
 ssize_t my_recv(int sockfd, void *buf, size_t len, int flags){
