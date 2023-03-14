@@ -11,4 +11,4 @@ mysocket.o : mysocket.c
 	gcc -c mysocket.c
 
 clean :
-	rm *.o *.a
+	rm *.o *.a server client

@@ -6,8 +6,21 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+// include header for thread
+#include <pthread.h>
 
+// include header for mutex
+#include <pthread.h>
+
+// include header for semaphore
+#include <semaphore.h>
+
+// include header for errno
 #include <errno.h>
+
+#define PORT 8080
+#define MAXLEN 1024
+
 
 const int BUF_SIZE = 1024;
 // vector<int> mssg_table;
@@ -19,157 +32,120 @@ typedef struct mssg_table{
     char **table;
 } mssg_table;
 
-typedef struct socket_desc{
-    int sockfd;
-    int domain;
-    int type;
-    int protocol;
-    struct sockaddr_in *addr;
-    socklen_t addrlen;
-    int backlog;
-    int flags;
-    int ret;
-    int n;
-    char *buf;
-    size_t len;
+int sockfd;
+pthread_t R,S;
+mssg_table *smt;
+mssg_table *rmt;
 
-    mssg_table *smt;
-    mssg_table *rmt;
-} socket_desc;
-
-//  link list of all socket_desc
-typedef struct socket_list{
-    socket_desc *sd;
-    struct socket_list *next;
-} socket_list;
-
-socket_list *sl = NULL;
 
 mssg_table* mssg_table_init(int size){
-    mssg_table *smt = (mssg_table *)calloc(1,sizeof(mssg_table));
-    smt->write_ptr = 0;
-    smt->read_ptr = 0;
-    smt->size = 0;
-    smt->table = (char **)calloc(BUF_SIZE, sizeof(char *));
-    return smt;
+    mssg_table *mt = (mssg_table *)calloc(1,sizeof(mssg_table));
+    mt->write_ptr = 0;
+    mt->read_ptr = 0;
+    mt->size = 0;
+    mt->table = (char **)calloc(BUF_SIZE, sizeof(char *));
+    return mt;
 }
 
-void mssg_table_read(mssg_table *smt, char *mssg){
-    while(smt->size == 0);// wait till smt->size > 0
+void mssg_table_read(mssg_table *mt, char *mssg){
+    // while(mt->size == 0);// wait till smt->size > 0
+    // printf("in mssg_table_read\n");
+    int pos = mt->read_ptr;
+    // printf("pos = %d\n",pos);
+    strcpy(mssg, mt->table[pos]);
+    printf("READ mt->table[%d] = %s",pos,mt->table[pos]);
 
-    int pos = smt->read_ptr;
-    strcpy(smt->table[pos],mssg);
-    printf("READ smt->table[%d] = %s",pos,smt->table[pos]);
-
-    smt->read_ptr = (pos+1) % BUF_SIZE;
-    smt->size = smt->size - 1;
+    mt->read_ptr = (pos+1) % BUF_SIZE;
+    mt->size = mt->size - 1;
 }
 
-void mssg_table_write(mssg_table *smt, char *mssg){
-    while(smt->size == BUF_SIZE);// wait till smt->size < BUF_SIZE
+void mssg_table_write(mssg_table *mt, char *mssg){
+    // while(mt->size == BUF_SIZE);// wait till smt->size < BUF_SIZE
 
-    int pos = smt->write_ptr;
-    strcpy(mssg,smt->table[pos]);
-    printf("WRTIE smt->table[%d] = %s",pos, smt->table[pos]);
+    // printf("in mssg_table_write\n");
+    int pos = mt->write_ptr;
+
+    mt->table[pos] = (char *)calloc(MAXLEN,sizeof(char));
+    strcpy(mt->table[pos], mssg);
+
+    printf("WRTIE smt->table[%d] = %s",pos, mt->table[pos]);
     
-    smt->write_ptr = (pos+1) % BUF_SIZE;
-    smt->size = smt->size + 1;
+    mt->write_ptr = (pos+1) % BUF_SIZE;
+    mt->size = mt->size + 1;
 }
 
-
-socket_list *socket_list_init(){
-    socket_list *sl = (socket_list *)calloc(1,sizeof(socket_list));
-    sl->sd = NULL;
-    sl->next = NULL;
-    return sl;
-}
-
-void socket_list_add(socket_list *sl, socket_desc *sd){
-    socket_list *new_node = (socket_list *)calloc(1,sizeof(socket_list));
-    new_node->sd = sd;
-    new_node->next = sl->next;
-    sl->next = new_node;
-}
-
-socket_desc* socket_list_find(socket_list *sl, int sockfd){
-    socket_list *temp = sl->next;
-    while(temp != NULL){
-        if(temp->sd->sockfd == sockfd)
-            return temp->sd;
-        temp = temp->next;
-    }
-    return NULL;
-}
-
-void socket_list_remove(socket_list *sl, int sockfd){
-    socket_list *temp = sl->next;
-    socket_list *prev = sl;
-    while(temp != NULL){
-        if(temp->sd->sockfd == sockfd){
-            prev->next = temp->next;
-            free(temp);
-            return;
-        }
-        prev = temp;
-        temp = temp->next;
+void* recv_thread(void *arg){
+    while(1){
+        
+        mssg_table_read(rmt, buf);
     }
 }
+void* send_thread(void *arg){
+    while(1){
+        char buf[BUF_SIZE];
+        char mssg[MAXLEN];
 
-void socket_list_print(socket_list *sl){
-    socket_list *temp = sl->next;
-    while(temp != NULL){
-        printf("sockfd = %d \n",temp->sd->sockfd);
-        temp = temp->next;
+        // read from smt 
+        msg_table_read(smt, buf);
+        // send message length to server, followed by message
+        int len = strlen(buf);
+        send(sockfd, &len, sizeof(int), 0);
+        send(sockfd, buf, len, 0);
     }
 }
-
-void socket_list_free(socket_list *sl){
-    socket_list *temp = sl->next;
-    while(temp != NULL){
-        socket_list *temp2 = temp->next;
-        free(temp);
-        temp = temp2;
-    }
-    free(sl);
-}
-
 
 int my_socket(int domain, int type, int protocol){
-    int sockfd;
     if ((sockfd = socket(domain, type, protocol)) < 0) {
         perror("Cannot create socket\n");
         exit(0);
     }
+
+    smt = mssg_table_init(BUF_SIZE);
+    rmt = mssg_table_init(BUF_SIZE);
+
+   
+    pthread_create(&R,0,recv_thread,0);
+    pthread_create(&S,0,send_thread,0);
+
+    pthread_join(R,0);
+    pthread_join(S,0);
+
     return sockfd;
 }
 
-int my_send(int sockfd, const void *buf, size_t len, int flags){
+int my_send(int sockfd_id, const void *buf, size_t len, int flags){
     // search for socket_desc
-    socket_desc *sd = socket_list_find(sl, sockfd);
-    if(sd == NULL){
+    if(sockfd_id == sockfd){
         printf("Socket not found\n");
         return -1;
     }
     
     // write to mssg_table
-    mssg_table_write(sd->smt, (char *)buf);
+    mssg_table_write(smt, (char *)buf);
     return len;
 }
 
-ssize_t my_recv(int sockfd, void *buf, size_t len, int flags){
+ssize_t my_recv(int sockfd_id, void *buf, size_t len, int flags){
     // search for socket_desc
-    socket_desc *sd = socket_list_find(sl, sockfd);
-    if(sd == NULL){
+    if(sockfd_id == sockfd){
         printf("Socket not found\n");
         return -1;
     }
     
     // read from mssg_table
-    mssg_table_read(sd->rmt, (char *)buf);
+    mssg_table_read(rmt, (char *)buf);
     return len;
 }
 
 int my_close(int sockfd){
+    // destroy the threads
+    pthread_exit(&R);
+    pthread_exit(&S);
+
+    // destroy the mssg_table
+    free(smt);
+    free(rmt);
+
     return close(sockfd);
 }
 
