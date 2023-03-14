@@ -1,98 +1,111 @@
+// #include <stdio.h>
+// #include <pthread.h>
+// #include <unistd.h>
+
+// void *thread1(void *arg) {
+//     while (1) {
+//         printf("Thread 1 is running\n");
+//         sleep(2);
+//     }
+//     return NULL;
+// }
+
+// void *thread2(void *arg) {
+//     while (1) {
+//         printf("Thread 2 is running\n");
+//         sleep(2);
+//     }
+//     return NULL;
+// }
+
+// int main() {
+//     pthread_t t1, t2;
+
+//     // Create the first thread and detach it
+//     if(pthread_create(&t1, NULL, thread1, NULL)) {
+//         fprintf(stderr, "Error creating thread 1\n");
+//         return 1;
+//     }
+//     pthread_detach(t1);
+
+//     // Create the second thread and detach it
+//     if(pthread_create(&t2, NULL, thread2, NULL)) {
+//         fprintf(stderr, "Error creating thread 2\n");
+//         return 1;
+//     }
+//     pthread_detach(t2);
+
+//     // Main program continues without waiting for the threads to finish
+//     printf("Threads are running in the background...\n");
+//     while(1) {}  // Infinite loop to keep the program running
+
+//     return 0;
+// }
+
+
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-// include header for thread
 #include <pthread.h>
 
-const int BUF_SIZE = 5;
-const int MAX_LEN = 1024;
-typedef struct mssg_table{
-    int write_ptr;
-    int read_ptr;
-    int size;
-    char **table;
-} mssg_table;
+// Declare a global mutex variable
+pthread_mutex_t mutex;
 
-mssg_table* mssg_table_init(int size){
-    mssg_table *mt = (mssg_table *)calloc(1,sizeof(mssg_table));
-    mt->write_ptr = 0;
-    mt->read_ptr = 0;
-    mt->size = 0;
-    mt->table = (char **)calloc(BUF_SIZE, sizeof(char *));
-    return mt;
+// Shared variable to be protected by the mutex
+int shared_var = 0;
+
+void *thread1(void *arg) {
+    // Acquire the mutex lock
+    pthread_mutex_lock(&mutex);
+
+    // Modify the shared variable
+    shared_var++;
+    printf("Thread 1: shared_var = %d\n", shared_var);
+
+    // Release the mutex lock
+    pthread_mutex_unlock(&mutex);
+
+    return NULL;
 }
 
-void mssg_table_read(mssg_table *mt, char *mssg){
-    // while(mt->size == 0);// wait till smt->size > 0
-    // printf("in mssg_table_read\n");
-    int pos = mt->read_ptr;
-    // printf("pos = %d\n",pos);
-    strcpy(mssg, mt->table[pos]);
-    printf("READ mt->table[%d] = %s",pos,mt->table[pos]);
+void *thread2(void *arg) {
+    // Acquire the mutex lock
+    pthread_mutex_lock(&mutex);
 
-    mt->read_ptr = (pos+1) % BUF_SIZE;
-    mt->size = mt->size - 1;
+    // Modify the shared variable
+    shared_var++;
+    printf("Thread 2: shared_var = %d\n", shared_var);
+
+    // Release the mutex lock
+    pthread_mutex_unlock(&mutex);
+
+    return NULL;
 }
 
-void mssg_table_write(mssg_table *mt, char *mssg){
-    // while(mt->size == BUF_SIZE);// wait till smt->size < BUF_SIZE
+int main() {
+    pthread_t t1, t2;
 
-    printf("in mssg_table_write\n");
-    int pos = mt->write_ptr;
+    // Initialize the mutex
+    pthread_mutex_init(&mutex, NULL);
 
-    mt->table[pos] = (char *)calloc(MAX_LEN,sizeof(char));
-    strcpy(mt->table[pos], mssg);
-
-    printf("WRTIE smt->table[%d] = %s",pos, mt->table[pos]);
-    
-    mt->write_ptr = (pos+1) % BUF_SIZE;
-    mt->size = mt->size + 1;
-}
-
-void print_mssg_table(mssg_table *mt){
-    printf("write_ptr = %d, read_ptr = %d, size = %d\n",mt->write_ptr,mt->read_ptr,mt->size);
-    for(int i = 0; i < BUF_SIZE; i++){
-        printf("mt->table[%d] = %s\n",i,mt->table[i]);
+    // Create the first thread
+    if(pthread_create(&t1, NULL, thread1, NULL)) {
+        fprintf(stderr, "Error creating thread 1\n");
+        return 1;
     }
-    printf("-----------------------------------------------------\n");
-}
 
-int main(){
-    mssg_table *smt = mssg_table_init(1024);
-    char *mssg = (char *)calloc(1024,sizeof(char));
-    
-    // strcpy(mssg,"Hii Geetu!!");
-    // printf("mssg = %s\n",mssg);
-    // mssg_table_write(smt,mssg);
-
-    // print_mssg_table(smt);
-
-    // mssg_table_read(smt,mssg);
-    // printf("mssg = %s\n",mssg);
-
-    // print_mssg_table(smt);
-
-    int cmd = 1;
-    while(cmd != 0){
-        printf("Enter 0 to exit, 1 to read, 2 to write: ");
-        scanf("%d",&cmd);
-        if(cmd == 1){
-            //  read message from smt
-            mssg_table_read(smt,mssg);
-            printf("mssg = %s\n",mssg);
-        }
-        else if(cmd == 2){
-            // write message to smt from stdin
-            scanf("%s",mssg);
-            printf("mssg = %s\n",mssg);
-            mssg_table_write(smt,mssg);
-        }
-        print_mssg_table(smt);
+    // Create the second thread
+    if(pthread_create(&t2, NULL, thread2, NULL)) {
+        fprintf(stderr, "Error creating thread 2\n");
+        return 1;
     }
+
+    // Wait for both threads to finish
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    // Destroy the mutex
+    pthread_mutex_destroy(&mutex);
+
+    printf("Both threads have finished\n");
+
     return 0;
 }

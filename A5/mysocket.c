@@ -21,11 +21,11 @@
 #define PORT 8080
 #define MAXLEN 1024
 
-
 const int BUF_SIZE = 1024;
 // vector<int> mssg_table;
 
-typedef struct mssg_table{
+typedef struct mssg_table
+{
     int write_ptr;
     int read_ptr;
     int size;
@@ -33,14 +33,16 @@ typedef struct mssg_table{
 } mssg_table;
 
 int sockfd;
-pthread_t R,S;
+pthread_t R, S;
 pthread_t p[2];
 mssg_table *smt;
 mssg_table *rmt;
+pthread_mutex_t recvLock, sendLock, msgSendLock;
+pthread_cond_t cond1, cond2;
 
-
-mssg_table* mssg_table_init(int size){
-    mssg_table *mt = (mssg_table *)calloc(1,sizeof(mssg_table));
+mssg_table *mssg_table_init(int size)
+{
+    mssg_table *mt = (mssg_table *)calloc(1, sizeof(mssg_table));
     mt->write_ptr = 0;
     mt->read_ptr = 0;
     mt->size = 0;
@@ -48,118 +50,173 @@ mssg_table* mssg_table_init(int size){
     return mt;
 }
 
-void mssg_table_read(mssg_table *mt, char *mssg){
-    while(mt->size == 0);// wait till smt->size > 0
-
+void mssg_table_read(mssg_table *mt, char *mssg)
+{
     printf("in mssg_table_read\n");
     int pos = mt->read_ptr;
     // printf("pos = %d\n",pos);
     strcpy(mssg, mt->table[pos]);
-    printf("READ mt->table[%d] = %s\n",pos,mt->table[pos]);
+    printf("READ mt->table[%d] = %s\n", pos, mt->table[pos]);
 
-    mt->read_ptr = (pos+1) % BUF_SIZE;
+    mt->read_ptr = (pos + 1) % BUF_SIZE;
     mt->size = mt->size - 1;
 }
 
-void mssg_table_write(mssg_table *mt, char *mssg){
-    while(mt->size == BUF_SIZE);// wait till smt->size < BUF_SIZE
-
-    // printf("in mssg_table_write\n");
+void mssg_table_write(mssg_table *mt, char *mssg)
+{
+    printf("in mssg_table_write\n");
     int pos = mt->write_ptr;
 
-    mt->table[pos] = (char *)calloc(MAXLEN,sizeof(char));
+    mt->table[pos] = (char *)calloc(MAXLEN, sizeof(char));
     strcpy(mt->table[pos], mssg);
 
-    printf("WRTIE smt->table[%d] = %s\n",pos, mt->table[pos]);
-    
-    mt->write_ptr = (pos+1) % BUF_SIZE;
+    printf("WRTIE smt->table[%d] = %s\n", pos, mt->table[pos]);
+
+    mt->write_ptr = (pos + 1) % BUF_SIZE;
     mt->size = mt->size + 1;
 }
 
-void* recv_thread(void *arg){
-    while(1){
+void *recv_thread(void *arg)
+{
+    while (1)
+    {
         sleep(1);
+        if(rmt->size == BUF_SIZE)  continue;
 
         char buf[MAXLEN];
-        int len;
-        // read message length from server
-        recv(sockfd, &len, sizeof(int), 0);
-        printf("len = %d\n",len);
+
+        pthread_mutex_lock(&recvLock);
         // read message from server
-        recv(sockfd, buf, len, 0);
-        printf("buf = %s\n",buf);
-        // write to rmt
-        mssg_table_write(rmt, buf);
+        recv(sockfd, buf, MAXLEN, 0);
+        printf("buf = %s\n", buf);
+
+        // mssg_table_write(rmt, buf);
+        int pos = rmt->write_ptr;
+        rmt->table[pos] = (char *)calloc(MAXLEN, sizeof(char));
+        strcpy(rmt->table[pos], buf);
+
+        rmt->write_ptr = (pos + 1) % BUF_SIZE;
+        rmt->size = rmt->size + 1;
+
+        pthread_mutex_unlock(&recvLock);
     }
 }
-void* send_thread(void *arg){
-    while(1){
+void *send_thread(void *arg)
+{
+    while (1)
+    {
         sleep(1);
 
         char buf[BUF_SIZE];
         char mssg[MAXLEN];
 
-        // read from smt 
-        mssg_table_read(smt, buf);
-        // send message length to server, followed by message
-        int len = sizeof(buf);
-        send(sockfd, &len, sizeof(int), 0);
-        printf("len = %d\n",len);
-        send(sockfd, buf, len, 0);
+        // read from smt
+        if(smt->size == 0)  continue;
+
+        pthread_mutex_lock(&sendLock);
+        // mssg_table_read(smt, buf);
+        int pos = smt->read_ptr;
+        printf("READ mt->table[%d] = %s\n", pos, smt->table[pos]);
+        smt->read_ptr = (pos + 1) % BUF_SIZE;
+        smt->size = smt->size - 1;
+
+        send(sockfd, buf, BUF_SIZE, 0);
+        pthread_mutex_unlock(&sendLock);
+
     }
 }
 
-int my_socket(int domain, int type, int protocol){
-    if ((sockfd = socket(domain, type, protocol)) < 0) {
+int my_socket(int domain, int type, int protocol)
+{
+    if ((sockfd = socket(domain, type, protocol)) < 0)
+    {
         perror("Cannot create socket\n");
         exit(0);
     }
     smt = mssg_table_init(BUF_SIZE);
     rmt = mssg_table_init(BUF_SIZE);
 
-    // pthread_create(&R,0,recv_thread,0);     
-    // pthread_create(&S,0,send_thread,0);     
-    for(int i=0;i<2;i++){
-        if(i==0){
-            pthread_create(&p[i],0,recv_thread,0);
+    // pthread_create(&R,0,recv_thread,0);
+    // pthread_create(&S,0,send_thread,0);
+    for (int i = 0; i < 2; i++)
+    {
+        if (i == 0)
+        {
+            pthread_create(&p[i], 0, recv_thread, 0);
+            pthread_detach(p[i]);
         }
-        else{
-            pthread_create(&p[i],0,send_thread,0);
+        else
+        {
+            pthread_create(&p[i], 0, send_thread, 0);
+            pthread_detach(p[i]);
         }
     }
-    for(int i=0;i<2;i++){
-        pthread_join(p[i],0);
-    }
+    // for(int i=0;i<2;i++){
+    //     pthread_join(p[i],0);
+    // }
     // pthread_join(R,0);
     // pthread_join(S,0);
     return sockfd;
 }
 
-int my_send(int sockfd_id, const void *buf, size_t len, int flags){
+int my_send(int sockfd_id, const void *buf, size_t len, int flags)
+{
     // search for socket_desc
-    if(sockfd_id == sockfd){
+    if (sockfd_id != sockfd)
+    {
         printf("Socket not found\n");
         return -1;
     }
-    
-    // write to mssg_table
-    mssg_table_write(smt, (char *)buf);
+
+    while (smt->size == BUF_SIZE)
+    {
+        sleep(1);
+    }
+
+    pthread_mutex_lock(&sendLock);
+
+    // mssg_table_write(smt, (char *)buf);
+    int pos = smt->write_ptr;
+    smt->table[pos] = (char *)calloc(MAXLEN, sizeof(char));
+    strcpy(smt->table[pos], buf);
+    printf("WRTIE smt->table[%d] = %s\n", pos, smt->table[pos]);
+
+    smt->write_ptr = (pos + 1) % BUF_SIZE;
+    smt->size = smt->size + 1;
+
+    pthread_mutex_unlock(&sendLock);
+
     return len;
 }
 
-ssize_t my_recv(int sockfd_id, void *buf, size_t len, int flags){
+ssize_t my_recv(int sockfd_id, void *buf, size_t len, int flags)
+{
     // search for socket_desc
-    if(sockfd_id == sockfd){
+    if (sockfd_id != sockfd)
+    {
         printf("Socket not found\n");
         return -1;
     }
-    
+
     // read from mssg_table
-    mssg_table_read(rmt, (char *)buf);
+    while (rmt->size == 0)
+        sleep(1);
+
+    pthread_mutex_lock(&recvLock);
+    // mssg_table_read(rmt, (char *)buf);
+    int pos = rmt->read_ptr;
+    strcpy(buf, rmt->table[pos]);
+    printf("READ rmt->table[%d] = %s\n", pos, rmt->table[pos]);
+
+    rmt->read_ptr = (pos + 1) % BUF_SIZE;
+    rmt->size = rmt->size - 1;
+    pthread_mutex_unlock(&recvLock);
+
     return len;
 }
 
-int my_close(int sockfd){
+int my_close(int sockfd)
+{
     // destroy the threads
     pthread_exit(&R);
     pthread_exit(&S);
@@ -171,7 +228,8 @@ int my_close(int sockfd){
     return close(sockfd);
 }
 
-int my_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
+int my_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+{
     return bind(sockfd, addr, addrlen);
     // int ret = bind(sockfd, addr, addrlen);
     // if (ret < 0) {
@@ -181,7 +239,8 @@ int my_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
     // return ret;
 }
 
-int my_listen(int sockfd, int backlog){
+int my_listen(int sockfd, int backlog)
+{
     return listen(sockfd, backlog);
     // int ret = listen(sockfd, backlog);
     // if (ret < 0) {
@@ -191,7 +250,8 @@ int my_listen(int sockfd, int backlog){
     // return ret;
 }
 
-int my_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen){
+int my_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
+{
     return accept(sockfd, addr, addrlen);
 
     // int newsockfd;
@@ -199,7 +259,8 @@ int my_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen){
     // return newsockfd;
 }
 
-int my_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
+int my_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+{
     return connect(sockfd, addr, addrlen);
 
     // int ret = connect(sockfd, addr, addrlen);
@@ -209,9 +270,6 @@ int my_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
     // }
     // return ret;
 }
-
-
-
 
 // void sendStr(char* str, int socket_id){
 //     int pos, i, len=strlen(str);
@@ -241,12 +299,10 @@ int my_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
 // 		// printf("$%s$\n",buf);
 
 //         for(i=0; i<BUF_SIZE && flag==0; i++)
-//             if(buf[i]=='\0') 
+//             if(buf[i]=='\0')
 // 				flag=1;
 
-//         for(i=0; i<BUF_SIZE; i++, pos++)	
+//         for(i=0; i<BUF_SIZE; i++, pos++)
 // 			str[pos] = buf[i];
 //     }
 // }
-
-
