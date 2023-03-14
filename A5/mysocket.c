@@ -34,6 +34,7 @@ typedef struct mssg_table{
 
 int sockfd;
 pthread_t R,S;
+pthread_t p[2];
 mssg_table *smt;
 mssg_table *rmt;
 
@@ -48,19 +49,20 @@ mssg_table* mssg_table_init(int size){
 }
 
 void mssg_table_read(mssg_table *mt, char *mssg){
-    // while(mt->size == 0);// wait till smt->size > 0
-    // printf("in mssg_table_read\n");
+    while(mt->size == 0);// wait till smt->size > 0
+
+    printf("in mssg_table_read\n");
     int pos = mt->read_ptr;
     // printf("pos = %d\n",pos);
     strcpy(mssg, mt->table[pos]);
-    printf("READ mt->table[%d] = %s",pos,mt->table[pos]);
+    printf("READ mt->table[%d] = %s\n",pos,mt->table[pos]);
 
     mt->read_ptr = (pos+1) % BUF_SIZE;
     mt->size = mt->size - 1;
 }
 
 void mssg_table_write(mssg_table *mt, char *mssg){
-    // while(mt->size == BUF_SIZE);// wait till smt->size < BUF_SIZE
+    while(mt->size == BUF_SIZE);// wait till smt->size < BUF_SIZE
 
     // printf("in mssg_table_write\n");
     int pos = mt->write_ptr;
@@ -68,7 +70,7 @@ void mssg_table_write(mssg_table *mt, char *mssg){
     mt->table[pos] = (char *)calloc(MAXLEN,sizeof(char));
     strcpy(mt->table[pos], mssg);
 
-    printf("WRTIE smt->table[%d] = %s",pos, mt->table[pos]);
+    printf("WRTIE smt->table[%d] = %s\n",pos, mt->table[pos]);
     
     mt->write_ptr = (pos+1) % BUF_SIZE;
     mt->size = mt->size + 1;
@@ -76,20 +78,33 @@ void mssg_table_write(mssg_table *mt, char *mssg){
 
 void* recv_thread(void *arg){
     while(1){
-        
-        mssg_table_read(rmt, buf);
+        sleep(1);
+
+        char buf[MAXLEN];
+        int len;
+        // read message length from server
+        recv(sockfd, &len, sizeof(int), 0);
+        printf("len = %d\n",len);
+        // read message from server
+        recv(sockfd, buf, len, 0);
+        printf("buf = %s\n",buf);
+        // write to rmt
+        mssg_table_write(rmt, buf);
     }
 }
 void* send_thread(void *arg){
     while(1){
+        sleep(1);
+
         char buf[BUF_SIZE];
         char mssg[MAXLEN];
 
         // read from smt 
-        msg_table_read(smt, buf);
+        mssg_table_read(smt, buf);
         // send message length to server, followed by message
-        int len = strlen(buf);
+        int len = sizeof(buf);
         send(sockfd, &len, sizeof(int), 0);
+        printf("len = %d\n",len);
         send(sockfd, buf, len, 0);
     }
 }
@@ -99,17 +114,24 @@ int my_socket(int domain, int type, int protocol){
         perror("Cannot create socket\n");
         exit(0);
     }
-
     smt = mssg_table_init(BUF_SIZE);
     rmt = mssg_table_init(BUF_SIZE);
 
-   
-    pthread_create(&R,0,recv_thread,0);
-    pthread_create(&S,0,send_thread,0);
-
-    pthread_join(R,0);
-    pthread_join(S,0);
-
+    // pthread_create(&R,0,recv_thread,0);     
+    // pthread_create(&S,0,send_thread,0);     
+    for(int i=0;i<2;i++){
+        if(i==0){
+            pthread_create(&p[i],0,recv_thread,0);
+        }
+        else{
+            pthread_create(&p[i],0,send_thread,0);
+        }
+    }
+    for(int i=0;i<2;i++){
+        pthread_join(p[i],0);
+    }
+    // pthread_join(R,0);
+    // pthread_join(S,0);
     return sockfd;
 }
 
