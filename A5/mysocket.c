@@ -58,10 +58,9 @@ void *recv_thread(void *arg)
 
         char buf[MAXLEN];
 
-        printf("sockfd=%d\n",sockfd);
         memset(buf, 0, MAXLEN);
-        recv(sockfd, buf, MAXLEN, 0);
-        printf("buf = %s\n", buf);
+        recv(*(int *)arg, buf, MAXLEN, 0);
+        printf("RECV_THREAD: %s\n", buf);
 
         // mssg_table_write(rmt, buf);
         int pos = rmt->write_ptr;
@@ -89,14 +88,16 @@ void *send_thread(void *arg)
         // mssg_table_read(smt, buf);
         int pos = smt->read_ptr;
         strcpy(buf, smt->table[pos]);
-        printf("READ smt->table[%d] = %s\n", pos, buf);
+        // printf("READ smt->table[%d] = %s\n", pos, buf);
         smt->read_ptr = (pos + 1) % BUF_SIZE;
         smt->size = smt->size - 1;
+        printf("SEND_Thread pos=%d, size=%d \n", smt->write_ptr, smt->size);
 
-        printf("sockfd=%d\n",sockfd);
-        int n = send(sockfd, buf, BUF_SIZE, 0);
-        printf("n = %d\n", n);
-        printf("buf2 = %s\n", buf);
+        int n = send(*(int *)arg, buf, BUF_SIZE, 0);
+        printf("send %d bytes\n", n);
+
+        perror("send");
+
         break;
     }
     return NULL;
@@ -123,23 +124,31 @@ int my_send(int sockfd_id, const void *buf, size_t len, int flags)
     int pos = smt->write_ptr;
     smt->table[pos] = (char *)calloc(MAXLEN, sizeof(char));
     strcpy(smt->table[pos], buf);
-    printf("WRTIE smt->table[%d] = %s\n", pos, smt->table[pos]);
+    // printf("WRTIE smt->table[%d] = %s\n", pos, smt->table[pos]);
 
     smt->write_ptr = (pos + 1) % BUF_SIZE;
     smt->size = smt->size + 1;
+    printf("MY_SEND: pos=%d, size=%d \n", smt->write_ptr, smt->size);
 
-    send_thread(NULL);
+    int *arg = (int *)malloc(sizeof(int));
+    *arg = sockfd_id;
+    send_thread(arg);
+    
+    printf("my_send end\n");
     return len;
 }
 
 ssize_t my_recv(int sockfd_id, void *buf, size_t len, int flags)
 {
     printf("my_recv\n");
-    recv_thread(NULL);
+
+    int *arg = (int *)malloc(sizeof(int));
+    *arg = sockfd_id;
+    recv_thread(arg);
     // mssg_table_read(rmt, (char *)buf);
     int pos = rmt->read_ptr;
     strcpy(buf, rmt->table[pos]);
-    printf("READ rmt->table[%d] = %s\n", pos, rmt->table[pos]);
+    // printf("READ rmt->table[%d] = %s\n", pos, rmt->table[pos]);
 
     rmt->read_ptr = (pos + 1) % BUF_SIZE;
     rmt->size = rmt->size - 1;
@@ -149,8 +158,8 @@ ssize_t my_recv(int sockfd_id, void *buf, size_t len, int flags)
 int my_close(int sockfd)
 {
     // destroy the mssg_table
-    free(smt);
-    free(rmt);
+    // free(smt);
+    // free(rmt);
 
     return close(sockfd);
 }

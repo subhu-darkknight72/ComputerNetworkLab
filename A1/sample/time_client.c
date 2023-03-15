@@ -64,6 +64,14 @@ int main()
 	
 	strcpy(buf,"Message from client");
 	send(sockfd, buf, strlen(buf) + 1, 0);
+
+	for(i=0; i < 100; i++) buf[i] = '\0';
+	recv(sockfd, buf, 100, 0);
+	printf("%s\n", buf);
+
+	
+	strcpy(buf,"Message from client");
+	send(sockfd, buf, strlen(buf) + 1, 0);
 		
 	close(sockfd);
 	return 0;
