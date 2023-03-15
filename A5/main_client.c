@@ -24,8 +24,8 @@ int main()
 		exit(0);
 	}
 	
-	for(i=0; i < 100; i++) buf[i] = '\0';
-	my_recv(sockfd, buf, 100, 0);
+	for(i=0; i < 1024; i++) buf[i] = '\0';
+	my_recv(sockfd, buf, 1024, 0);
 	printf("%s\n", buf);
 	
 	strcpy(buf,"Message from client");
