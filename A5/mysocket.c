@@ -18,7 +18,7 @@
 // include header for errno
 #include <errno.h>
 
-#define PORT 8080
+#define PORT 20000
 #define MAXLEN 1024
 
 const int BUF_SIZE = 1024;
@@ -88,12 +88,15 @@ void *send_thread(void *arg)
 
         // mssg_table_read(smt, buf);
         int pos = smt->read_ptr;
-        printf("READ smt->table[%d] = %s\n", pos, smt->table[pos]);
+        strcpy(buf, smt->table[pos]);
+        printf("READ smt->table[%d] = %s\n", pos, buf);
         smt->read_ptr = (pos + 1) % BUF_SIZE;
         smt->size = smt->size - 1;
 
         printf("sockfd=%d\n",sockfd);
-        send(sockfd, buf, BUF_SIZE, 0);
+        int n = send(sockfd, buf, BUF_SIZE, 0);
+        printf("n = %d\n", n);
+        printf("buf2 = %s\n", buf);
         break;
     }
     return NULL;
@@ -109,7 +112,7 @@ int my_socket(int domain, int type, int protocol)
     smt = mssg_table_init(BUF_SIZE);
     rmt = mssg_table_init(BUF_SIZE);
 
-    printf("my_socket\n");
+    printf("my_socket: sockfd=%d\n",sockfd);
     return sockfd;
 }
 

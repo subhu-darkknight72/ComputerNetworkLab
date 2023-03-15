@@ -40,9 +40,9 @@ int main()
 		
 		memset(buf, 0, 100);
 		strcpy(buf, "Message from server");
-		my_send(newsockfd, buf, strlen(buf) + 1, 0);
+		send(newsockfd, buf, strlen(buf) + 1, 0);
 
-		my_recv(newsockfd, buf, 100, 0);
+		recv(newsockfd, buf, 100, 0);
 		printf("%s\n", buf);
 
 		my_close(newsockfd);
