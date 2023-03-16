@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include "mysocket.h"
 
+#define SOCK_MYTCP 1964
 const int BUF_S = 1024;
+
 int main()
 {
 	int			sockfd ;
@@ -9,7 +11,7 @@ int main()
 	int i;
 	char buf[BUF_S];
 
-	if ((sockfd = my_socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+	if ((sockfd = my_socket(AF_INET, SOCK_MYTCP, 0)) < 0) {
 		perror("Unable to create socket\n");
 		exit(0);
 	}

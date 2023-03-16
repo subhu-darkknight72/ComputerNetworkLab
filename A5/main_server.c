@@ -2,6 +2,7 @@
 #include "mysocket.h"
 #include <signal.h>
 
+#define SOCK_MYTCP 1964
 const int BUF_S = 1024;
 
 void SIG_PIPE_handler(int signo)
@@ -19,7 +20,7 @@ int main()
 	int i;
 	char buf[BUF_S]; /* We will use this buffer for communication */
 
-	if ((sockfd = my_socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	if ((sockfd = my_socket(AF_INET, SOCK_MYTCP, 0)) < 0)
 	{
 		perror("Cannot create socket\n");
 		exit(0);
@@ -75,7 +76,7 @@ int main()
 	printf("%s\n", buf);
 
 	memset(buf, 0, BUF_S);
-	strcpy(buf, "Message from server 111111");
+	strcpy(buf, "Message from server 11111");
 	my_send(newsockfd, buf, strlen(buf) + 1, 0);
 	
 	memset(buf, 0, BUF_S);

@@ -12,6 +12,7 @@
 #include <errno.h>
 
 #define PORT 8080
+#define SOCK_MyTCP 1964
 
 const int MAXLEN = 10240;
 const int BUF_SIZE = 256;
@@ -143,11 +144,17 @@ void *send_thread(void *arg)
 
 int my_socket(int domain, int type, int protocol)
 {
-    if ((sockfd = socket(domain, type, protocol)) < 0)
+    if(type != SOCK_MyTCP){
+        printf("Not mytcp socket\n");
+        exit(0);
+    }
+
+    if ((sockfd = socket(domain, SOCK_STREAM, protocol)) < 0)
     {
         perror("Cannot create socket\n");
         exit(0);
     }
+
     smt = mssg_table_init(BUF_SIZE);
     rmt = mssg_table_init(BUF_SIZE);
 
@@ -190,7 +197,7 @@ int my_send(int sockfd_id, const void *buf, size_t len, int flags)
     return len;
 }
 
-ssize_t my_recv(int sockfd_id, void *buf_in, size_t len, int flags)
+ssize_t my_recv(int sockfd_id, void *buf_in, size_t len_in, int flags)
 {
     char *buf = (char *)buf_in;
     pthread_mutex_lock(&recvLock);
@@ -201,6 +208,7 @@ ssize_t my_recv(int sockfd_id, void *buf_in, size_t len, int flags)
     sockfd = sockfd_id;
     int pos = rmt->read_ptr;
     strcpy(buf, rmt->table[pos]);
+    int len = rmt->lens[pos];
 
     rmt->read_ptr = (pos + 1) % BUF_SIZE;
     rmt->size = rmt->size - 1;
