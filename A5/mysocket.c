@@ -91,13 +91,14 @@ void *send_thread(void *arg)
         // printf("READ smt->table[%d] = %s\n", pos, buf);
         smt->read_ptr = (pos + 1) % BUF_SIZE;
         smt->size = smt->size - 1;
-        printf("SEND_Thread pos=%d, size=%d \n", smt->write_ptr, smt->size);
+        printf("buf: %s\n", buf);
+        printf("SEND_Thread read_ptr=%d, size=%d \n", smt->read_ptr, smt->size);
 
         int n = send(*(int *)arg, buf, BUF_SIZE, 0);
+        if(n<0)
+            perror("send");
+
         printf("send %d bytes\n", n);
-
-        perror("send");
-
         break;
     }
     return NULL;
@@ -128,7 +129,7 @@ int my_send(int sockfd_id, const void *buf, size_t len, int flags)
 
     smt->write_ptr = (pos + 1) % BUF_SIZE;
     smt->size = smt->size + 1;
-    printf("MY_SEND: pos=%d, size=%d \n", smt->write_ptr, smt->size);
+    printf("MY_SEND: write=%d, size=%d \n", smt->write_ptr, smt->size);
 
     int *arg = (int *)malloc(sizeof(int));
     *arg = sockfd_id;

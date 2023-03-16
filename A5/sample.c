@@ -15,16 +15,18 @@ pthread_mutex_t mutex;
 
 void *myThreadFun(void *vargp)
 {
+    int cnt = 0;
     pthread_mutex_lock(&mutex);
-    while (user_cnt < 1000)
+    while (user_cnt < 100)
     {
-        // sleep(1);
-        user_cnt += rand() % 100;
+        sleep(1);
+        user_cnt += rand() % 20;
         printf("%d : ", user_cnt);
+        cnt++;
     }
     pthread_cond_signal(&cond);
     pthread_mutex_unlock(&mutex);
-    pthread_exit(0);
+    pthread_exit((void *)cnt);
     return vargp;
 }
 
@@ -38,10 +40,10 @@ int main()
     pthread_mutex_init(&mutex, 0);
 
     pthread_create(&thread_id, &attr, myThreadFun, 0);
-    pthread_join(thread_id, 0);
-    // int ret_val;
-    // pthread_join(thread_id, &ret_val);
-    // printf("Thread returned %d\n", ret_val);
+    // pthread_join(thread_id, 0);
+    int ret_val;
+    pthread_join(thread_id, &ret_val);
+    printf("Thread returned %d\n", ret_val);
 
     printf("After Thread\n");
     pthread_mutex_lock(&mutex);

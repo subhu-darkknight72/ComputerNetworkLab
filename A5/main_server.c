@@ -1,8 +1,14 @@
 #include <stdio.h>
 #include "mysocket.h"
+#include <signal.h>
+void SIG_PIPE_handler(int signo)
+{
+	printf("SIGPIPE caught\n");
+}
 
 int main()
 {
+	signal(SIGPIPE, SIG_PIPE_handler);
 	int			sockfd, newsockfd ; /* Socket descriptors */
 	int			clilen;
 	struct sockaddr_in	cli_addr, serv_addr;
@@ -39,20 +45,21 @@ int main()
 		}
 		
 		memset(buf, 0, 100);
-		strcpy(buf, "Message from server");
+		strcpy(buf, "Message from server 1");
 		my_send(newsockfd, buf, strlen(buf) + 1, 0);
 
-		my_recv(newsockfd, buf, 100, 0);
-		printf("%s\n", buf);
+		// my_recv(newsockfd, buf, 100, 0);
+		// printf("%s\n", buf);
 
 		memset(buf, 0, 100);
-		strcpy(buf, "Message from server");
+		strcpy(buf, "Message from server 2");
 		my_send(newsockfd, buf, strlen(buf) + 1, 0);
 
-		my_recv(newsockfd, buf, 100, 0);
-		printf("%s\n", buf);
+		// my_recv(newsockfd, buf, 100, 0);
+		// printf("%s\n", buf);
 
 		my_close(newsockfd);
+		break;
 	}
 	return 0;
 }
