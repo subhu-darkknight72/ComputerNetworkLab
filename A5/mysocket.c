@@ -12,7 +12,7 @@
 #include <errno.h>
 
 #define PORT 8080
-#define MAXLEN 1024
+#define MAXLEN 10240
 
 const int BUF_SIZE = 256;
 // vector<int> mssg_table;
@@ -117,8 +117,8 @@ void *send_thread(void *arg)
 
 
         int total_sent, len = strlen(buf) + 1, n;
-        // printf("buf=%s, len=%d\n", buf, len);
-        // send(sockfd, &len, sizeof(int), 0);
+        printf("send_thread len=%d\n", len);
+        send(sockfd, &len, sizeof(len), 0);
         // perror("send");
 
         total_sent=0;
@@ -217,10 +217,10 @@ ssize_t my_recv(int sockfd_id, void *buf_in, size_t len, int flags)
 
 int my_close(int sockfd)
 {
-    sleep(15);
+    sleep(105);
     // destroy the threads
-    pthread_cancel(R);
-    pthread_cancel(S);
+    // pthread_cancel(R);
+    // pthread_cancel(S);
 
     pthread_join(R, NULL);
     pthread_join(S, NULL);
@@ -257,7 +257,7 @@ int my_accept(int sockfd_in, struct sockaddr *addr, socklen_t *addrlen)
 int my_connect(int sockfdin, const struct sockaddr *addr, socklen_t addrlen)
 {
     sockfd = sockfdin;
-    return connect(sockfd, addr, addrlen);
+    return connect(sockfdin, addr, addrlen);
 }
 
 void sendStr(char *str, int socket_id)

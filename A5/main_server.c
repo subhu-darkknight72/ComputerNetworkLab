@@ -44,12 +44,10 @@ int main()
 	
 	memset(buf, 0, BUF_S);
 	strcpy(buf, "Message from server 1");
-	printf("newsockfd = %d\n", newsockfd);
 	my_send(newsockfd, buf, strlen(buf) + 1, 0);
 
 	memset(buf, 0, BUF_S);
-	strcpy(buf, "Message from server 2");
-	printf("newsockfd = %d\n", newsockfd);
+	strcpy(buf, "Message from server 22");
 	my_send(newsockfd, buf, strlen(buf) + 1, 0);
 	
 	memset(buf, 0, BUF_S);
@@ -59,6 +57,42 @@ int main()
 	memset(buf, 0, BUF_S);
 	my_recv(newsockfd, buf, BUF_S, 0);
 	printf("%s\n", buf);
+
+	// memset(buf, 0, BUF_S);
+	// strcpy(buf, "Message from server 1");
+	// printf("newsockfd = %d\n", newsockfd);
+	// my_send(newsockfd, buf, strlen(buf) + 1, 0);
+
+	// memset(buf, 0, BUF_S);
+	// strcpy(buf, "Message from server 2");
+	// printf("newsockfd = %d\n", newsockfd);
+	// my_send(newsockfd, buf, strlen(buf) + 1, 0);
+	
+	// memset(buf, 0, BUF_S);
+	// my_recv(newsockfd, buf, BUF_S, 0);
+	// printf("%s\n", buf);
+
+	// memset(buf, 0, BUF_S);
+	// my_recv(newsockfd, buf, BUF_S, 0);
+	// printf("%s\n", buf);
+
+	// memset(buf, 0, BUF_S);
+	// strcpy(buf, "Message from server 1");
+	// printf("newsockfd = %d\n", newsockfd);
+	// my_send(newsockfd, buf, strlen(buf) + 1, 0);
+
+	// memset(buf, 0, BUF_S);
+	// strcpy(buf, "Message from server 2");
+	// printf("newsockfd = %d\n", newsockfd);
+	// my_send(newsockfd, buf, strlen(buf) + 1, 0);
+	
+	// memset(buf, 0, BUF_S);
+	// my_recv(newsockfd, buf, BUF_S, 0);
+	// printf("%s\n", buf);
+
+	// memset(buf, 0, BUF_S);
+	// my_recv(newsockfd, buf, BUF_S, 0);
+	// printf("%s\n", buf);
 
 	my_close(newsockfd);
 	return 0;
