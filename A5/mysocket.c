@@ -83,6 +83,7 @@ void *recv_thread(void *arg)
         int pos = rmt->write_ptr;
         rmt->table[pos] = (char *)calloc(MAXLEN, sizeof(char));
         strcpy(rmt->table[pos], mssg);
+        rmt->lens[pos] = len;
 
         rmt->write_ptr = (pos + 1) % BUF_SIZE;
         rmt->size = rmt->size + 1;
@@ -110,9 +111,9 @@ void *send_thread(void *arg)
         strcpy(buf, smt->table[pos]);
         smt->read_ptr = (pos + 1) % BUF_SIZE;
         smt->size = smt->size - 1;
+        int len = smt->lens[pos];
 
-
-        int total_sent, len = strlen(buf) + 1, n;
+        int total_sent, n;
         send(sockfd, &len, sizeof(len), 0);
         // perror("send");
 
