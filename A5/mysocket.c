@@ -12,9 +12,6 @@
 // include header for mutex
 #include <pthread.h>
 
-// include header for semaphore
-#include <semaphore.h>
-
 // include header for errno
 #include <errno.h>
 
@@ -54,8 +51,6 @@ void *recv_thread(void *arg)
 {
     while (1)
     {
-        // printf("recv_thread\n");
-
         char buf[MAXLEN];
 
         memset(buf, 0, MAXLEN);
@@ -82,17 +77,11 @@ void *send_thread(void *arg)
         char buf[BUF_SIZE];
         char mssg[MAXLEN];
 
-        // read from smt
-        // if(smt->size == 0)  continue;
-
         // mssg_table_read(smt, buf);
         int pos = smt->read_ptr;
         strcpy(buf, smt->table[pos]);
-        // printf("READ smt->table[%d] = %s\n", pos, buf);
         smt->read_ptr = (pos + 1) % BUF_SIZE;
         smt->size = smt->size - 1;
-        // printf("buf: %s\n", buf);
-        // printf("SEND_Thread read_ptr=%d, size=%d \n", smt->read_ptr, smt->size);
 
         int n = send(*(int *)arg, buf, strlen(buf)+1, 0);
         if(n<0)
