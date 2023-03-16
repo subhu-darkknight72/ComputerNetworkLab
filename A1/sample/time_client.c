@@ -35,13 +35,13 @@ int main()
 	}
 
 
-	// for(i=0; i < 1000; i++) buf[i] = '\0';
-	// int n = recv(sockfd, buf, 1000, 0);
-	// printf("bytes received=%d, %s\n", n, buf);
+	for(i=0; i < 1000; i++) buf[i] = '\0';
+	int n = recv(sockfd, buf, 1000, 0);
+	printf("bytes received=%d, %s\n", n, buf);
 
-	// for(i=0; i < 1000; i++) buf[i] = '\0';
-	// n = recv(sockfd, buf, 1000, 0);
-	// printf("bytes received=%d, %s\n", n, buf);
+	for(i=0; i < 1000; i++) buf[i] = '\0';
+	n = recv(sockfd, buf, 1000, 0);
+	printf("bytes received=%d, %s\n", n, buf);
 
 	memset(buf, 0, 1000);
 	strcpy(buf,"Message from client 1");

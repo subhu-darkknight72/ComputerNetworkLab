@@ -117,13 +117,13 @@ void *send_thread(void *arg)
 
 
         int total_sent, len = strlen(buf) + 1, n;
-        printf("buf=%s, len=%d\n", buf, len);
+        // printf("buf=%s, len=%d\n", buf, len);
         // send(sockfd, &len, sizeof(int), 0);
         // perror("send");
 
         total_sent=0;
         while(total_sent<len){
-            printf("sockfd=%d buf=%s, len=%d\n", sockfd, buf, len);
+            // printf("sockfd=%d buf=%s, len=%d\n", sockfd, buf, len);
             n = send(sockfd, buf+total_sent, len-total_sent, 0);
             printf("send %d bytes\n", n);
             if(n<0){
