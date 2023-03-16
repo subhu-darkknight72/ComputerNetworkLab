@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include "mysocket.h"
 #include <signal.h>
+
+const int BUF_S = 1024;
+
 void SIG_PIPE_handler(int signo)
 {
 	printf("SIGPIPE caught\n");
@@ -14,7 +17,7 @@ int main()
 	struct sockaddr_in cli_addr, serv_addr;
 
 	int i;
-	char buf[100]; /* We will use this buffer for communication */
+	char buf[BUF_S]; /* We will use this buffer for communication */
 
 	if ((sockfd = my_socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
@@ -39,18 +42,25 @@ int main()
 		exit(0);
 	}
 
-	memset(buf, 0, 100);
+	memset(buf, 0, BUF_S);
 	strcpy(buf, "Message from server 1");
 	my_send(newsockfd, buf, strlen(buf) + 1, 0);
 
-	my_recv(newsockfd, buf, 100, 0);
+	my_recv(newsockfd, buf, BUF_S, 0);
 	printf("%s\n", buf);
 
-	memset(buf, 0, 100);
+	memset(buf, 0, BUF_S);
 	strcpy(buf, "Message from server 2");
 	my_send(newsockfd, buf, strlen(buf) + 1, 0);
 
-	my_recv(newsockfd, buf, 100, 0);
+	my_recv(newsockfd, buf, BUF_S, 0);
+	printf("%s\n", buf);
+
+	memset(buf, 0, BUF_S);
+	strcpy(buf, "Message from server 3");
+	my_send(newsockfd, buf, strlen(buf) + 1, 0);
+
+	my_recv(newsockfd, buf, BUF_S, 0);
 	printf("%s\n", buf);
 
 	my_close(newsockfd);

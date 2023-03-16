@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include "mysocket.h"
 
+const int BUF_S = 1024;
 int main()
 {
 	int			sockfd ;
 	struct sockaddr_in	serv_addr;
 	int i;
-	char buf[100];
+	char buf[BUF_S];
 
-	/* Opening a socket is exactly similar to the server process */
 	if ((sockfd = my_socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("Unable to create socket\n");
 		exit(0);
@@ -24,11 +24,28 @@ int main()
 		exit(0);
 	}
 	
-	for(i=0; i < 1024; i++) buf[i] = '\0';
-	my_recv(sockfd, buf, 1024, 0);
+	for(i=0; i < BUF_S; i++) buf[i] = '\0';
+	my_recv(sockfd, buf, BUF_S, 0);
 	printf("%s\n", buf);
+
 	
-	strcpy(buf,"Message from client");
+	strcpy(buf,"Message from client 1");
+	my_send(sockfd, buf, strlen(buf) + 1, 0);
+
+	for(i=0; i < BUF_S; i++) buf[i] = '\0';
+	my_recv(sockfd, buf, BUF_S, 0);
+	printf("%s\n", buf);
+
+	
+	strcpy(buf,"Message from client 2");
+	my_send(sockfd, buf, strlen(buf) + 1, 0);
+
+	for(i=0; i < BUF_S; i++) buf[i] = '\0';
+	my_recv(sockfd, buf, BUF_S, 0);
+	printf("%s\n", buf);
+
+	
+	strcpy(buf,"Message from client 3");
 	my_send(sockfd, buf, strlen(buf) + 1, 0);
 		
 	my_close(sockfd);
