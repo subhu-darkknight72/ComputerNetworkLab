@@ -54,13 +54,13 @@ void *recv_thread(void *arg)
 {
     while (1)
     {
-        printf("recv_thread\n");
+        // printf("recv_thread\n");
 
         char buf[MAXLEN];
 
         memset(buf, 0, MAXLEN);
         recv(*(int *)arg, buf, MAXLEN, 0);
-        printf("RECV_THREAD: %s\n", buf);
+        // printf("RECV_THREAD: %s\n", buf);
 
         // mssg_table_write(rmt, buf);
         int pos = rmt->write_ptr;
@@ -78,7 +78,7 @@ void *send_thread(void *arg)
 {
     while (1)
     {
-        printf("send_thread\n");
+        // printf("send_thread\n");
         char buf[BUF_SIZE];
         char mssg[MAXLEN];
 
@@ -91,10 +91,10 @@ void *send_thread(void *arg)
         // printf("READ smt->table[%d] = %s\n", pos, buf);
         smt->read_ptr = (pos + 1) % BUF_SIZE;
         smt->size = smt->size - 1;
-        printf("buf: %s\n", buf);
-        printf("SEND_Thread read_ptr=%d, size=%d \n", smt->read_ptr, smt->size);
+        // printf("buf: %s\n", buf);
+        // printf("SEND_Thread read_ptr=%d, size=%d \n", smt->read_ptr, smt->size);
 
-        int n = send(*(int *)arg, buf, BUF_SIZE, 0);
+        int n = send(*(int *)arg, buf, strlen(buf)+1, 0);
         if(n<0)
             perror("send");
 
@@ -120,7 +120,7 @@ int my_socket(int domain, int type, int protocol)
 
 int my_send(int sockfd_id, const void *buf, size_t len, int flags)
 {
-    printf("my_send\n");
+    // printf("my_send\n");
     // mssg_table_write(smt, (char *)buf);
     int pos = smt->write_ptr;
     smt->table[pos] = (char *)calloc(MAXLEN, sizeof(char));
@@ -129,19 +129,19 @@ int my_send(int sockfd_id, const void *buf, size_t len, int flags)
 
     smt->write_ptr = (pos + 1) % BUF_SIZE;
     smt->size = smt->size + 1;
-    printf("MY_SEND: write=%d, size=%d \n", smt->write_ptr, smt->size);
+    // printf("MY_SEND: write=%d, size=%d \n", smt->write_ptr, smt->size);
 
     int *arg = (int *)malloc(sizeof(int));
     *arg = sockfd_id;
     send_thread(arg);
     
-    printf("my_send end\n");
+    // printf("my_send end\n");
     return len;
 }
 
 ssize_t my_recv(int sockfd_id, void *buf, size_t len, int flags)
 {
-    printf("my_recv\n");
+    // printf("my_recv\n");
 
     int *arg = (int *)malloc(sizeof(int));
     *arg = sockfd_id;
