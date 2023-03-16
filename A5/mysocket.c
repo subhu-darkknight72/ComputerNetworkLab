@@ -12,10 +12,9 @@
 #include <errno.h>
 
 #define PORT 8080
-#define MAXLEN 10240
 
+const int MAXLEN = 10240;
 const int BUF_SIZE = 256;
-// vector<int> mssg_table;
 
 typedef struct mssg_table
 {
@@ -79,9 +78,6 @@ void *recv_thread(void *arg)
             }
             total_recv += n;
         }
-        // printf("recv mssg: %s\n", mssg);
-        // memset(buf, 0, MAXLEN);
-        // recv(sockfd, buf, MAXLEN, 0);
         
         // mssg_table_write(rmt, buf);
         int pos = rmt->write_ptr;
@@ -117,7 +113,6 @@ void *send_thread(void *arg)
 
 
         int total_sent, len = strlen(buf) + 1, n;
-        printf("send_thread len=%d\n", len);
         send(sockfd, &len, sizeof(len), 0);
         // perror("send");
 
@@ -125,7 +120,7 @@ void *send_thread(void *arg)
         while(total_sent<len){
             // printf("sockfd=%d buf=%s, len=%d\n", sockfd, buf, len);
             n = send(sockfd, buf+total_sent, len-total_sent, 0);
-            printf("send %d bytes\n", n);
+            // printf("send %d bytes\n", n);
             if(n<0){
                 perror("send");
                 // pthread_exit(NULL);
@@ -181,6 +176,7 @@ int my_send(int sockfd_id, const void *buf, size_t len, int flags)
     int pos = smt->write_ptr;
     smt->table[pos] = (char *)calloc(MAXLEN, sizeof(char));
     strcpy(smt->table[pos], buf);
+    smt->lens[pos] = len;
 
     smt->write_ptr = (pos + 1) % BUF_SIZE;
     smt->size = smt->size + 1;
@@ -204,7 +200,6 @@ ssize_t my_recv(int sockfd_id, void *buf_in, size_t len, int flags)
     sockfd = sockfd_id;
     int pos = rmt->read_ptr;
     strcpy(buf, rmt->table[pos]);
-    // printf("my_recv buf=%s\n", buf);
 
     rmt->read_ptr = (pos + 1) % BUF_SIZE;
     rmt->size = rmt->size - 1;
@@ -217,10 +212,10 @@ ssize_t my_recv(int sockfd_id, void *buf_in, size_t len, int flags)
 
 int my_close(int sockfd)
 {
-    sleep(105);
+    sleep(15);
     // destroy the threads
-    // pthread_cancel(R);
-    // pthread_cancel(S);
+    pthread_cancel(R);
+    pthread_cancel(S);
 
     pthread_join(R, NULL);
     pthread_join(S, NULL);
@@ -248,10 +243,6 @@ int my_accept(int sockfd_in, struct sockaddr *addr, socklen_t *addrlen)
     pthread_cond_signal(&cond_full_rmt);
     pthread_cond_signal(&cond_empty_smt);
     return sockfd;
-
-    // int newsockfd;
-    // newsockfd = accept(sockfd, addr, addrlen);
-    // return newsockfd;
 }
 
 int my_connect(int sockfdin, const struct sockaddr *addr, socklen_t addrlen)
@@ -270,7 +261,6 @@ void sendStr(char *str, int socket_id)
         for (i = 0; i < BUF_SIZE; i++)
             buf[i] = ((pos + i) < len) ? str[pos + i] : '\0';
 
-        // send(socket_id, buf, BUF_SIZE, 0);
         if (send(socket_id, buf, BUF_SIZE, 0) < 0)
         {
             perror("error in transmission.\n");
@@ -291,7 +281,6 @@ void receiveStr(char *str, int socket_id)
             perror("error in transmission.\n");
             exit(-1);
         }
-        // printf("$%s$\n",buf);
 
         for (i = 0; i < BUF_SIZE && flag == 0; i++)
             if (buf[i] == '\0')
