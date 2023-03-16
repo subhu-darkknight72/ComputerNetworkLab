@@ -8,17 +8,13 @@
 #include <arpa/inet.h>
 // include header for thread
 #include <pthread.h>
-
-// include header for mutex
-#include <pthread.h>
-
 // include header for errno
 #include <errno.h>
 
-#define PORT 20000
+#define PORT 8080
 #define MAXLEN 1024
 
-const int BUF_SIZE = 1024;
+const int BUF_SIZE = 256;
 // vector<int> mssg_table;
 
 typedef struct mssg_table
@@ -27,15 +23,17 @@ typedef struct mssg_table
     int read_ptr;
     int size;
     char **table;
+    int *lens;
 } mssg_table;
 
 int sockfd;
 pthread_t R, S;
-pthread_t p[2];
 mssg_table *smt;
 mssg_table *rmt;
-pthread_mutex_t recvLock, sendLock, msgSendLock;
-pthread_cond_t cond1, cond2;
+
+pthread_mutex_t recvLock, sendLock;
+pthread_cond_t cond_full_smt, cond_empty_smt;
+pthread_cond_t cond_full_rmt, cond_empty_rmt;
 
 mssg_table *mssg_table_init(int size)
 {
@@ -44,6 +42,7 @@ mssg_table *mssg_table_init(int size)
     mt->read_ptr = 0;
     mt->size = 0;
     mt->table = (char **)calloc(BUF_SIZE, sizeof(char *));
+    mt->lens = (int *)calloc(BUF_SIZE, sizeof(int));
     return mt;
 }
 
@@ -51,31 +50,64 @@ void *recv_thread(void *arg)
 {
     while (1)
     {
-        char buf[MAXLEN];
+        sleep(5);
+        pthread_mutex_lock(&recvLock);
+        while (rmt->size == BUF_SIZE || sockfd == -1)
+            pthread_cond_wait(&cond_full_rmt, &recvLock);
 
-        memset(buf, 0, MAXLEN);
-        recv(*(int *)arg, buf, MAXLEN, 0);
-        // printf("RECV_THREAD: %s\n", buf);
+        int len = 0, temp = 0;
+        do{
+            temp = recv(sockfd, &len, sizeof(len), MSG_PEEK);
+        }while(temp < sizeof(len));
+        recv(sockfd, &len, sizeof(len), 0);
+        // printf("len=%d\n", len);
 
+        char mssg[MAXLEN], buf[BUF_SIZE];
+        memset(mssg, 0, MAXLEN);
+        memset(buf, 0, BUF_SIZE);
+
+        int total_recv=0, n;
+        while(total_recv<len){
+            n = recv(sockfd, mssg+total_recv, len-total_recv, 0);
+            if(n<0){
+                perror("recv");
+                pthread_exit(NULL);
+            }
+            if(n==0){
+                printf("server closed\n");
+                pthread_exit(NULL);
+            }
+            total_recv += n;
+        }
+        // printf("recv mssg: %s\n", mssg);
+        // memset(buf, 0, MAXLEN);
+        // recv(sockfd, buf, MAXLEN, 0);
+        
         // mssg_table_write(rmt, buf);
         int pos = rmt->write_ptr;
         rmt->table[pos] = (char *)calloc(MAXLEN, sizeof(char));
-        strcpy(rmt->table[pos], buf);
+        strcpy(rmt->table[pos], mssg);
 
         rmt->write_ptr = (pos + 1) % BUF_SIZE;
         rmt->size = rmt->size + 1;
 
-        break;
-    } 
-    return NULL;
+        pthread_mutex_unlock(&recvLock);
+        pthread_cond_signal(&cond_empty_rmt);
+    }
+    return 0;
 }
 void *send_thread(void *arg)
 {
     while (1)
     {
-        // printf("send_thread\n");
-        char buf[BUF_SIZE];
-        char mssg[MAXLEN];
+        sleep(5);
+        pthread_mutex_lock(&sendLock);
+        while (smt->size == 0 || sockfd == -1)
+            pthread_cond_wait(&cond_empty_smt, &sendLock);
+
+        char buf[BUF_SIZE], mssg[MAXLEN];
+        memset(buf, '\0', BUF_SIZE);
+        memset(mssg, '\0', MAXLEN);
 
         // mssg_table_read(smt, buf);
         int pos = smt->read_ptr;
@@ -83,14 +115,34 @@ void *send_thread(void *arg)
         smt->read_ptr = (pos + 1) % BUF_SIZE;
         smt->size = smt->size - 1;
 
-        int n = send(*(int *)arg, buf, strlen(buf)+1, 0);
-        if(n<0)
-            perror("send");
 
-        printf("send %d bytes\n", n);
-        break;
+        int total_sent, len = strlen(buf) + 1, n;
+        printf("buf=%s, len=%d\n", buf, len);
+        // send(sockfd, &len, sizeof(int), 0);
+        // perror("send");
+
+        total_sent=0;
+        while(total_sent<len){
+            printf("sockfd=%d buf=%s, len=%d\n", sockfd, buf, len);
+            n = send(sockfd, buf+total_sent, len-total_sent, 0);
+            printf("send %d bytes\n", n);
+            if(n<0){
+                perror("send");
+                // pthread_exit(NULL);
+                exit(1);
+            }
+            if(n==0){
+                printf("server closed\n");
+                // pthread_exit(NULL);
+                exit(1);
+            }
+            total_sent += n;
+        }
+
+        pthread_mutex_unlock(&sendLock);
+        pthread_cond_signal(&cond_full_smt);
     }
-    return NULL;
+    return 0;
 }
 
 int my_socket(int domain, int type, int protocol)
@@ -103,73 +155,149 @@ int my_socket(int domain, int type, int protocol)
     smt = mssg_table_init(BUF_SIZE);
     rmt = mssg_table_init(BUF_SIZE);
 
-    printf("my_socket: sockfd=%d\n",sockfd);
+    recvLock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+    sendLock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+    cond_full_smt = (pthread_cond_t)PTHREAD_COND_INITIALIZER;
+    cond_empty_smt = (pthread_cond_t)PTHREAD_COND_INITIALIZER;
+    cond_full_rmt = (pthread_cond_t)PTHREAD_COND_INITIALIZER;
+    cond_empty_rmt = (pthread_cond_t)PTHREAD_COND_INITIALIZER;
+
+    // create threads for send and recv and join them
+    pthread_create(&R, NULL, recv_thread, NULL);
+    pthread_create(&S, NULL, send_thread, NULL);
+
+    printf("my_socket: sockfd=%d\n", sockfd);
     return sockfd;
 }
 
 int my_send(int sockfd_id, const void *buf, size_t len, int flags)
 {
-    // printf("my_send\n");
+    pthread_mutex_lock(&sendLock);
+    while (smt->size == BUF_SIZE)
+        pthread_cond_wait(&cond_full_smt, &sendLock);
+    
+
     // mssg_table_write(smt, (char *)buf);
     int pos = smt->write_ptr;
     smt->table[pos] = (char *)calloc(MAXLEN, sizeof(char));
     strcpy(smt->table[pos], buf);
-    // printf("WRTIE smt->table[%d] = %s\n", pos, smt->table[pos]);
 
     smt->write_ptr = (pos + 1) % BUF_SIZE;
     smt->size = smt->size + 1;
-    // printf("MY_SEND: write=%d, size=%d \n", smt->write_ptr, smt->size);
 
-    int *arg = (int *)malloc(sizeof(int));
-    *arg = sockfd_id;
-    send_thread(arg);
+    sockfd = sockfd_id;
     
-    // printf("my_send end\n");
+    pthread_mutex_unlock(&sendLock);
+    pthread_cond_signal(&cond_empty_smt);
+
     return len;
 }
 
-ssize_t my_recv(int sockfd_id, void *buf, size_t len, int flags)
+ssize_t my_recv(int sockfd_id, void *buf_in, size_t len, int flags)
 {
-    // printf("my_recv\n");
+    char *buf = (char *)buf_in;
+    pthread_mutex_lock(&recvLock);
+    while (rmt->size == 0)
+        pthread_cond_wait(&cond_empty_rmt, &recvLock);
 
-    int *arg = (int *)malloc(sizeof(int));
-    *arg = sockfd_id;
-    recv_thread(arg);
     // mssg_table_read(rmt, (char *)buf);
+    sockfd = sockfd_id;
     int pos = rmt->read_ptr;
     strcpy(buf, rmt->table[pos]);
-    // printf("READ rmt->table[%d] = %s\n", pos, rmt->table[pos]);
+    // printf("my_recv buf=%s\n", buf);
 
     rmt->read_ptr = (pos + 1) % BUF_SIZE;
     rmt->size = rmt->size - 1;
+
+    pthread_mutex_unlock(&recvLock);
+    pthread_cond_signal(&cond_full_rmt);
+
     return len;
 }
 
 int my_close(int sockfd)
 {
+    sleep(15);
+    // destroy the threads
+    pthread_cancel(R);
+    pthread_cancel(S);
+
+    pthread_join(R, NULL);
+    pthread_join(S, NULL);
+
     // destroy the mssg_table
-    // free(smt);
-    // free(rmt);
+    free(smt);
+    free(rmt);
 
     return close(sockfd);
 }
 
-int my_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+int my_bind(int sockfd_in, const struct sockaddr *addr, socklen_t addrlen)
 {
-    return bind(sockfd, addr, addrlen);
+    return bind(sockfd_in, addr, addrlen);
 }
 
-int my_listen(int sockfd, int backlog)
+int my_listen(int sockfd_in, int backlog)
 {
-    return listen(sockfd, backlog);
+    return listen(sockfd_in, backlog);
 }
 
-int my_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
+int my_accept(int sockfd_in, struct sockaddr *addr, socklen_t *addrlen)
 {
-    return accept(sockfd, addr, addrlen);
+    sockfd = accept(sockfd, addr, addrlen);
+    pthread_cond_signal(&cond_full_rmt);
+    pthread_cond_signal(&cond_empty_smt);
+    return sockfd;
+
+    // int newsockfd;
+    // newsockfd = accept(sockfd, addr, addrlen);
+    // return newsockfd;
 }
 
-int my_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+int my_connect(int sockfdin, const struct sockaddr *addr, socklen_t addrlen)
 {
+    sockfd = sockfdin;
     return connect(sockfd, addr, addrlen);
+}
+
+void sendStr(char *str, int socket_id)
+{
+    int pos, i, len = strlen(str);
+    char buf[BUF_SIZE];
+
+    for (pos = 0; pos < len; pos += BUF_SIZE)
+    {
+        for (i = 0; i < BUF_SIZE; i++)
+            buf[i] = ((pos + i) < len) ? str[pos + i] : '\0';
+
+        // send(socket_id, buf, BUF_SIZE, 0);
+        if (send(socket_id, buf, BUF_SIZE, 0) < 0)
+        {
+            perror("error in transmission.\n");
+            exit(-1);
+        }
+    }
+}
+
+void receiveStr(char *str, int socket_id)
+{
+    int flag = 0, i, pos = 0;
+    char buf[BUF_SIZE];
+    while (flag == 0)
+    {
+        // recv(socket_id, buf, BUF_SIZE, 0)
+        if (recv(socket_id, buf, BUF_SIZE, 0) < 0)
+        {
+            perror("error in transmission.\n");
+            exit(-1);
+        }
+        // printf("$%s$\n",buf);
+
+        for (i = 0; i < BUF_SIZE && flag == 0; i++)
+            if (buf[i] == '\0')
+                flag = 1;
+
+        for (i = 0; i < BUF_SIZE; i++, pos++)
+            str[pos] = buf[i];
+    }
 }

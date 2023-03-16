@@ -23,30 +23,34 @@ int main()
 		perror("Unable to connect to server\n");
 		exit(0);
 	}
-	
+	printf("Connection established\n");
 	for(i=0; i < BUF_S; i++) buf[i] = '\0';
 	my_recv(sockfd, buf, BUF_S, 0);
+	buf[0] = 'a';
 	printf("%s\n", buf);
 
 	
 	strcpy(buf,"Message from client 1");
+	buf[0] = 'a';
+	printf("%s\n", buf);
+	
 	my_send(sockfd, buf, strlen(buf) + 1, 0);
 
-	for(i=0; i < BUF_S; i++) buf[i] = '\0';
-	my_recv(sockfd, buf, BUF_S, 0);
-	printf("%s\n", buf);
+	// for(i=0; i < BUF_S; i++) buf[i] = '\0';
+	// recv(sockfd, buf, BUF_S, 0);
+	// printf("%s\n", buf);
 
 	
-	strcpy(buf,"Message from client 2");
-	my_send(sockfd, buf, strlen(buf) + 1, 0);
+	// strcpy(buf,"Message from client 2");
+	// my_send(sockfd, buf, strlen(buf) + 1, 0);
 
-	for(i=0; i < BUF_S; i++) buf[i] = '\0';
-	my_recv(sockfd, buf, BUF_S, 0);
-	printf("%s\n", buf);
+	// for(i=0; i < BUF_S; i++) buf[i] = '\0';
+	// my_recv(sockfd, buf, BUF_S, 0);
+	// printf("%s\n", buf);
 
 	
-	strcpy(buf,"Message from client 3");
-	my_send(sockfd, buf, strlen(buf) + 1, 0);
+	// strcpy(buf,"Message from client 3");
+	// my_send(sockfd, buf, strlen(buf) + 1, 0);
 		
 	my_close(sockfd);
 	return 0;

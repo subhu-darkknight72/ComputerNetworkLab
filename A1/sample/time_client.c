@@ -34,21 +34,26 @@ int main()
 		exit(0);
 	}
 
-	for(i=0; i < 1000; i++) buf[i] = '\0';
-	recv(sockfd, buf, 1000, 0);
-	printf("%s\n", buf);
 
-	
+	// for(i=0; i < 1000; i++) buf[i] = '\0';
+	// int n = recv(sockfd, buf, 1000, 0);
+	// printf("bytes received=%d, %s\n", n, buf);
+
+	// for(i=0; i < 1000; i++) buf[i] = '\0';
+	// n = recv(sockfd, buf, 1000, 0);
+	// printf("bytes received=%d, %s\n", n, buf);
+
+	memset(buf, 0, 1000);
 	strcpy(buf,"Message from client 1");
-	send(sockfd, buf, strlen(buf) + 1, 0);
+	int l = strlen(buf)+1;
+	send(sockfd, &l, sizeof(l), 0);
+	send(sockfd, buf, l, 0);
 
-	for(i=0; i < 1000; i++) buf[i] = '\0';
-	recv(sockfd, buf, 1000, 0);
-	printf("%s\n", buf);
-
-	
+	memset(buf, 0, 1000);
 	strcpy(buf,"Message from client 2");
-	send(sockfd, buf, strlen(buf) + 1, 0);
+	l = strlen(buf)+1;
+	send(sockfd, &l, sizeof(l), 0);
+	send(sockfd, buf, l, 0);
 		
 	close(sockfd);
 	return 0;
