@@ -31,8 +31,8 @@ pthread_t R, S;
 mssg_table *smt;
 mssg_table *rmt;
 
-pthread_mutex_t recvLock, sendLock;
-pthread_cond_t cond_full_smt, cond_empty_smt;
+pthread_mutex_t recvLock, sendLock,mutex1;
+pthread_cond_t cond_full_smt, cond_empty_smt,cond1;
 pthread_cond_t cond_full_rmt, cond_empty_rmt;
 
 mssg_table *mssg_table_init(int size)
@@ -48,9 +48,13 @@ mssg_table *mssg_table_init(int size)
 
 void *recv_thread(void *arg)
 {
+    printf(".......Connecting.......\n");
+    pthread_mutex_lock(&mutex1);
+    pthread_cond_wait(&cond1,&mutex1);
+    
     while (1)
     {
-        sleep(5);
+        sleep(1);
         pthread_mutex_lock(&recvLock);
         while (rmt->size == BUF_SIZE || sockfd == -1)
             pthread_cond_wait(&cond_full_rmt, &recvLock);
@@ -92,13 +96,14 @@ void *recv_thread(void *arg)
         pthread_mutex_unlock(&recvLock);
         pthread_cond_signal(&cond_empty_rmt);
     }
+    pthread_mutex_unlock(&mutex1);
     return 0;
 }
 void *send_thread(void *arg)
 {
     while (1)
     {
-        sleep(5);
+        sleep(1);
         pthread_mutex_lock(&sendLock);
         while (smt->size == 0 || sockfd == -1)
             pthread_cond_wait(&cond_empty_smt, &sendLock);
@@ -164,6 +169,8 @@ int my_socket(int domain, int type, int protocol)
     cond_empty_smt = (pthread_cond_t)PTHREAD_COND_INITIALIZER;
     cond_full_rmt = (pthread_cond_t)PTHREAD_COND_INITIALIZER;
     cond_empty_rmt = (pthread_cond_t)PTHREAD_COND_INITIALIZER;
+    mutex1=(pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+    cond1=(pthread_cond_t)PTHREAD_COND_INITIALIZER;
 
     // create threads for send and recv and join them
     pthread_create(&R, NULL, recv_thread, NULL);
@@ -172,7 +179,6 @@ int my_socket(int domain, int type, int protocol)
     printf("my_socket: sockfd=%d\n", sockfd);
     return sockfd;
 }
-
 int my_send(int sockfd_id, const void *buf, size_t len, int flags)
 {
     pthread_mutex_lock(&sendLock);
@@ -193,10 +199,8 @@ int my_send(int sockfd_id, const void *buf, size_t len, int flags)
     
     pthread_mutex_unlock(&sendLock);
     pthread_cond_signal(&cond_empty_smt);
-
     return len;
 }
-
 ssize_t my_recv(int sockfd_id, void *buf_in, size_t len_in, int flags)
 {
     char *buf = (char *)buf_in;
@@ -215,13 +219,13 @@ ssize_t my_recv(int sockfd_id, void *buf_in, size_t len_in, int flags)
 
     pthread_mutex_unlock(&recvLock);
     pthread_cond_signal(&cond_full_rmt);
-
+    
     return len;
 }
 
 int my_close(int sockfd)
 {
-    sleep(15);
+    sleep(5);
     // destroy the threads
     pthread_cancel(R);
     pthread_cancel(S);
@@ -251,12 +255,14 @@ int my_accept(int sockfd_in, struct sockaddr *addr, socklen_t *addrlen)
     sockfd = accept(sockfd, addr, addrlen);
     pthread_cond_signal(&cond_full_rmt);
     pthread_cond_signal(&cond_empty_smt);
+    pthread_cond_signal(&cond1);
     return sockfd;
 }
 
 int my_connect(int sockfdin, const struct sockaddr *addr, socklen_t addrlen)
 {
     sockfd = sockfdin;
+    pthread_cond_signal(&cond1);
     return connect(sockfdin, addr, addrlen);
 }
 
