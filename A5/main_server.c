@@ -3,7 +3,7 @@
 #include <signal.h>
 
 #define SOCK_MYTCP 1964
-const int BUF_S = 1024;
+const int BUF_S = 102400;
 
 void SIG_PIPE_handler(int signo)
 {
@@ -103,6 +103,10 @@ int main()
 	strcpy(buf, "Message from server 11111111");
 	my_send(newsockfd, buf, strlen(buf) + 1, 0);
 	
+	memset(buf, 0, BUF_S);
+	my_recv(newsockfd, buf, BUF_S, 0);
+	printf("%s\n", buf);
+
 	memset(buf, 0, BUF_S);
 	my_recv(newsockfd, buf, BUF_S, 0);
 	printf("%s\n", buf);

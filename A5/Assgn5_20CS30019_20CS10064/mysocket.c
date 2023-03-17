@@ -14,8 +14,8 @@
 #define PORT 8080
 #define SOCK_MyTCP 1964
 
-const int MAXLEN = 102400;
-const int BUF_SIZE = 5000;
+const int MAXLEN = 10240;
+const int BUF_SIZE = 256;
 
 typedef struct mssg_table
 {
@@ -109,7 +109,7 @@ void *send_thread(void *arg)
         while (smt->size == 0 || sockfd == -1)
             pthread_cond_wait(&cond_empty_smt, &sendLock);
 
-        char buf[MAXLEN], mssg[MAXLEN];
+        char buf[BUF_SIZE], mssg[MAXLEN];
         memset(buf, '\0', BUF_SIZE);
         memset(mssg, '\0', MAXLEN);
 
@@ -294,7 +294,7 @@ void receiveStr(char *str, int socket_id)
     while (flag == 0)
     {
         // recv(socket_id, buf, BUF_SIZE, 0)
-        if (my_recv(socket_id, buf, BUF_SIZE, 0) < 0)
+        if (my_ecv(socket_id, buf, BUF_SIZE, 0) < 0)
         {
             perror("error in transmission.\n");
             exit(-1);

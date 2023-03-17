@@ -1,0 +1,43 @@
+To run the code in server mode, the command to be used is:
+make server; ./server
+Now to run the code in client mode:
+make client; ./client
+
+Functions used in mysocket.c and mysocket.h
+
+mssg_table:  a circular-array struct having the following members:
+	int write_ptr: the position where we write next
+	int read_ptr: the position where we read next
+	int size:  to maintain the size of the unread messages
+	char **table:  array of strings(array of char) to store the message
+	int *lens: saving the size of every corresponding string
+
+mssg_table_init: to initialize the mssg_table struct and returns the initialized value
+
+send_thread: read from the message and its length from the Send Message Table. Then, it will send the size of the message first and then the message itself.
+
+recv_thread: will receive the length of the upcoming message and receive the message itself. Then, write them into the Received Message Table (RMT).
+
+my_socket(int domain, int type, int protocol): first, create a socket, initialise locks and pthread_conditionals and then spawn send and recv threads.
+
+my_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen): to bind the socket-address to the sockfd
+
+my_listen(int sockfd, int backlog): start the listen call for incoming requests
+
+my_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen): accept connection request from client.
+
+my_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen): sends connection request to the server.
+
+my_send(int sockfd, const void *buf, size_t len, int flags): writes the send message into the send table.
+
+my_recv(int sockfd, void *buf, size_t len, int flags): writes the received message into the recv table.
+
+my_close(int sockfd): first cancels the send and recv threads to terminate and then cleans the send and recv tables. 
+
+
+Description:
+MySend:
+When the "my_send" function is called, it acquires the sendLock and waits until the size of Send Message Table (SMT) is not complete. Then, it writes the message and its length into corresponding arrays. It unlocks, sends a signal to the Send-thread that it has written a message into the SMT,  and returns the size of the string to the main program.
+
+MyRecv:
+When the "my_recv" function is called, it acquires the recvLock and waits until the Received Message Table (RMT) is not empty. Then, it reads the unread message, the length from RMT, and updates the buf-variable from the user. It then unlocks and sends a signal to Recieve-thread that it has read a message from RMT, and there is a space and returns the message length to the main program.
