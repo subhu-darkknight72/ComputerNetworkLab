@@ -18,6 +18,9 @@ int my_send(int sockfd, const void *buf, size_t len, int flags);
 int my_recv(int sockfd, void *buf, size_t len, int flags);
 int my_close(int sockfd);
 
+//  to send and recieve messages from the socket in packets of size BUF_SIZE
+void sendStr(char *str, int socket_id);
+void receiveStr(char *str, int socket_id);
 
 // my_socket – This function opens a standard TCP socket with the socket call. It also creates two threads R and S (to be described later), allocates and initializes space for two tables Send_Message and Received_Message (to be described later), and any additional space that may be needed. The parameters to these are the same as the normal socket( ) call, except that it will take only SOCK_MyTCP as the socket type.
 // my_bind – binds the socket with some address-port using the bind call.

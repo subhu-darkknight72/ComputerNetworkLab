@@ -1,0 +1,1 @@
+tar -zcvf Assgn5_20CS30019_20CS10064.tar.gz "$1"

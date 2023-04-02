@@ -1,8 +1,11 @@
+server_filename=main_server.c
+client_filename=main_client.c
+
 server : libsocket.a
-	gcc -o server main_server.c libsocket.a -lpthread
+	gcc -o server $(server_filename) libsocket.a -lpthread
 
 client : libsocket.a
-	gcc -o client main_client.c libsocket.a -lpthread 
+	gcc -o client $(client_filename) libsocket.a -lpthread 
 
 libsocket.a : mysocket.o
 	ar rcs libsocket.a mysocket.o

@@ -1,7 +1,18 @@
-To run the code in server mode, the command to be used is:
-make server; ./server
-Now to run the code in client mode:
-make client; ./client
+Computer Networks Lab Assignment 5
+---------------------------------
+20CS30019 - Gitanjali Gupta
+20CS10064 - Subhajyoti Halder
+---------------------------------
+
+Testing:
+server_filename: main_server.c
+client_filename: main_client.c
+(can be edited in makefile accordingly)
+
+command to run Server:
+    make server; ./server
+command to run Client:
+    make client; ./client
 
 Functions used in mysocket.c and mysocket.h
 
