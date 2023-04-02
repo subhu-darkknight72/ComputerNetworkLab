@@ -236,8 +236,9 @@ void ping(char *hostname)
             {
                 done = 1;
                 gettimeofday(&start_time, NULL);
-                elapsed_time = (double)(start_time.tv_sec + end_time.tv_sec) * 1000.0;
-                elapsed_time += (double)(start_time.tv_usec - end_time.tv_usec) / 1000.0;
+                //elapsed_time = (double)(start_time.tv_sec + end_time.tv_sec) * 1000.0; ///////
+                //elapsed_time += (double)(start_time.tv_usec - end_time.tv_usec) / 1000.0;
+                elapsed_time = (double)(start_time.tv_sec) * 1000.0;
                 printf("%d.\t%s\t%.3f ms\n", num_hops, inet_ntoa(*(struct in_addr *)&ip_recv_packet.source_address), elapsed_time);
                 break;
             }
@@ -262,7 +263,7 @@ int main(int argc, char **argv)
 
     printf("Tracing route to %s\n", argv[1]);
 
-    trace_route(argv[1]);
+    ping(argv[1]);
 
     return 0;
 }
