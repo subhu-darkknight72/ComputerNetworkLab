@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 
     // Resolve destination address
     // struct hostent *host = gethostbyname("google.co.in");
-    struct hostent *host = gethostbyname("cse.iitkgp.ac.in");
+    struct hostent *host = gethostbyname("google.co.in");
     if (host == NULL) {
         perror("gethostbyname");
         exit(EXIT_FAILURE);
