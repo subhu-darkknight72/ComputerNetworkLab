@@ -17,11 +17,13 @@
 #include <netdb.h>
 #include <errno.h>
 
+#include <sys/select.h>
+
 #define BUFSIZE 1500
 #define MAXTTL 30
 #define MAXWAIT 5
 
-u_short in_cksum(u_short *addr, int len);
+uint16_t in_cksum(uint16_t *addr, int len);
 
 int main(int argc, char *argv[])
 {
@@ -45,59 +47,66 @@ int main(int argc, char *argv[])
     //     exit(1);
     // }
 
-    if ((hp = gethostbyname("localhost")) == NULL) {
+    if ((hp = gethostbyname("localhost")) == NULL)
+    {
         fprintf(stderr, "gethostbyname error: %s", hstrerror(h_errno));
-    
-            exit(1);
-        }
+
+        exit(1);
+    }
     bzero(&dest, sizeof(dest));
     dest.sin_family = AF_INET;
-    bcopy(hp->h_addr, &dest.sin_addr, hp->h_length);
+    struct in_addr **addr_list = (struct in_addr **)hp->h_addr_list;
+    bcopy(addr_list[0], &dest.sin_addr, hp->h_length);
 
-    printf("dest_size:%lu\n",sizeof(dest));
-    printf("dest_family:%d\n",dest.sin_family);
-    //printf("dest.sin_addr: %d\n",dest.sin_addr );
+    printf("dest_size:%lu\n", sizeof(dest));
+    printf("dest_family:%d\n", dest.sin_family);
+    // printf("dest.sin_addr: %d\n",dest.sin_addr );
 
-    if ((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0) {
+    if ((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0)
+    {
         fprintf(stderr, "socket error: %s", strerror(errno));
         exit(1);
     }
-    if (setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0) {
+    if (setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0)
+    {
         fprintf(stderr, "setsockopt error: %s", strerror(errno));
         exit(1);
     }
 
-    while (!done) {
+    while (!done)
+    {
         bzero(sendbuf, BUFSIZE);
-        ip = (struct ip *) sendbuf;
-        icmp = (struct icmp *) (sendbuf + sizeof(struct ip));
-        
-        ip->ip_v = IPVERSION;
-        ip->ip_hl = sizeof(struct ip) >> 2;
-        ip->ip_tos = 0;
-        ip->ip_len = htons(sizeof(struct ip) + sizeof(struct icmp));
-        ip->ip_id = htons(0);
-        ip->ip_off = 0;
-        ip->ip_ttl = ttl;
-        ip->ip_p = IPPROTO_ICMP;
-        ip->ip_sum = 0;
-        ip->ip_src.s_addr = 0;
-        ip->ip_dst = dest.sin_addr;
+        ip = (struct iphdr *)sendbuf;
+        icmp = (struct icmphdr *)(sendbuf + sizeof(struct iphdr));
 
-        icmp->icmp_type = ICMP_ECHO;
-        icmp->icmp_code = 0;
-        icmp->icmp_id = htons(getpid());
-        icmp->icmp_seq = htons(seq++);
-        icmp->icmp_cksum = 0;
-        icmp->icmp_cksum = in_cksum((u_short *) icmp, (int)sizeof(struct icmp));
+        ip->version = 4;
+        ip->ihl = 5;
+        ip->tos = 0; // type of service (normal service)
+        ip->tot_len = sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(sendbuf);
+        ip->id = getpid();
+        ip->frag_off = 0;
+        ip->ttl = 128;
+        ip->protocol = IPPROTO_ICMP;
+        ip->check = 0;
+        ip->saddr = INADDR_ANY;
+        ip->daddr = dest.sin_addr.s_addr;
+        ip->check = checksum(ip, sizeof(struct iphdr));
 
-        printf("sockfd: $%d$ \n",sockfd);
-        printf("dest_size:%lu\n",sizeof(dest));
-        printf("icmp size:%lu\n",sizeof(struct icmp));
-        printf("ip size:%lu\n",sizeof(struct ip));
+        icmp->type = ICMP_ECHO;
+        icmp->code = 0;
+        icmp->checksum = 0;
+        icmp->un.echo.id = 123;
+        icmp->un.echo.sequence = 0;
+        icmp->checksum = in_cksum((uint16_t *)icmp, (int)sizeof(struct icmphdr));
 
-        printf("dest_family:%d\n",dest.sin_family);
-        if (sendto(sockfd, sendbuf, sizeof(ip), 0, (struct sockaddr *) &dest, sizeof(dest)) < 0) {
+        printf("sockfd: $%d$ \n", sockfd);
+        printf("dest_size:%lu\n", sizeof(dest));
+        printf("icmp size:%lu\n", sizeof(struct icmphdr));
+        printf("ip size:%lu\n", sizeof(struct iphdr));
+
+        printf("dest_family:%d\n", dest.sin_family);
+        if (sendto(sockfd, sendbuf, sizeof(ip), 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
+        {
             fprintf(stderr, "sendto error: %s", strerror(errno));
             exit(1);
         }
@@ -105,28 +114,38 @@ int main(int argc, char *argv[])
         tv.tv_usec = 0;
         FD_ZERO(&rset);
         FD_SET(sockfd, &rset);
-        if ((n = select(sockfd + 1, &rset, NULL, NULL, &tv)) < 0) {
+        if ((n = select(sockfd + 1, &rset, NULL, NULL, &tv)) < 0)
+        {
             fprintf(stderr, "select error: %s", strerror(errno));
             exit(1);
-        } else if (n == 0) {
+        }
+        else if (n == 0)
+        {
             printf("%d: * * *\r", ttl);
-        } else {
+        }
+        else
+        {
             fromlen = sizeof(from);
-            if ((n = recvfrom(sockfd, recvbuf, BUFSIZE, 0, (struct sockaddr *) &from, &fromlen)) < 0) {
+            if ((n = recvfrom(sockfd, recvbuf, BUFSIZE, 0, (struct sockaddr *)&from, &fromlen)) < 0)
+            {
                 fprintf(stderr, "recvfrom error: %s", strerror(errno));
                 exit(1);
             }
-            ip = (struct ip *) recvbuf;
-            icmp = (struct icmp *) (recvbuf + (ip->ip_hl << 2));
-            if (icmp->icmp_type == ICMP_ECHOREPLY) {
+            ip = (struct iphdr *)recvbuf;
+            icmp = (struct icmphdr *)(recvbuf + (ip->ihl << 2));
+            if (icmp->type == ICMP_ECHOREPLY)
+            {
                 printf("%d: %s\r", ttl, inet_ntoa(from.sin_addr));
                 done = 1;
-            } else {
+            }
+            else
+            {
                 printf("%d: %s\r", ttl, inet_ntoa(from.sin_addr));
             }
         }
         ttl++;
-        if (ttl > MAXTTL) {
+        if (ttl > MAXTTL)
+        {
             fprintf(stderr, "ttl > MAXTTL");
             exit(1);
         }
@@ -134,20 +153,22 @@ int main(int argc, char *argv[])
     exit(0);
 }
 
-u_short in_cksum(u_short *addr, int len)
+uint16_t in_cksum(uint16_t *addr, int len)
 {
     int nleft = len;
-    u_short *w = addr;
-    u_short answer;
+    uint16_t *w = addr;
+    uint16_t answer;
     int sum = 0;
 
-    while (nleft > 1) {
+    while (nleft > 1)
+    {
         sum += *w++;
         nleft -= 2;
     }
 
-    if (nleft == 1) {
-        *(u_char *) (&answer) = *(u_char *) w;
+    if (nleft == 1)
+    {
+        *(uint16_t *)(&answer) = *(uint16_t *)w;
         sum += answer;
     }
 
