@@ -1,2 +1,2 @@
-gcc -o $1 $1.c
-sudo ./$1
+sudo gcc -o ass ass6.c 
+sudo ./ass localhost

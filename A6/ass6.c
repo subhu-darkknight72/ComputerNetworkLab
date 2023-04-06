@@ -20,15 +20,15 @@
 #include <sys/select.h>
 
 #define BUFSIZE 1500
-#define MAXTTL 30
 #define MAXWAIT 5
+const int MAX_TTL=30;
 
 uint16_t in_cksum(uint16_t *addr, int len);
 
 int main(int argc, char *argv[])
 {
     int sockfd, n;
-    char sendbuf[BUFSIZE], recvbuf[BUFSIZE];
+    char *sendbuf, *recvbuf;
     struct iphdr *ip;
     struct icmphdr *icmp;
     struct sockaddr_in dest, from;
@@ -46,8 +46,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "usage: %s hostname", argv[0]);
         exit(1);
     }
-
-    strcpy(sendbuf, "GG <3, always");
 
     if ((hp = gethostbyname(argv[1] )) == NULL)
     {
@@ -75,9 +73,14 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    char *mssg;
+    printf("Enter While\n");
     while (!done)
     {
-        bzero(sendbuf, BUFSIZE);
+        mssg = malloc(100);
+        strcpy(mssg, "GG <3, always");
+
+        sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
         ip = (struct iphdr *)sendbuf;
         icmp = (struct icmphdr *)(sendbuf + sizeof(struct iphdr));
 
@@ -101,21 +104,29 @@ int main(int argc, char *argv[])
         icmp->un.echo.sequence = 0;
         icmp->checksum = in_cksum((uint16_t *)icmp, (int)sizeof(struct icmphdr));
 
-        printf("sockfd: $%d$ \n", sockfd);
-        printf("dest_size:%lu\n", sizeof(dest));
-        printf("icmp size:%lu\n", sizeof(struct icmphdr));
-        printf("ip size:%lu\n", sizeof(struct iphdr));
+        icmp->checksum = 0;
+        memcpy(sendbuf + sizeof(struct iphdr) + sizeof(struct icmphdr), mssg, strlen(mssg));
+        icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(sendbuf));
 
+        
+        printf("sockfd: $%d$ \n", sockfd);
         printf("dest_family:%d\n", dest.sin_family);
         if (sendto(sockfd, sendbuf, ip->tot_len, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
         {
             fprintf(stderr, "sendto error: %s", strerror(errno));
             exit(1);
         }
+        else
+        {
+            printf("%d: %s\r", ttl, inet_ntoa(dest.sin_addr));
+            printf("sendto success\n");
+        }
+        
         tv.tv_sec = MAXWAIT;
         tv.tv_usec = 0;
         FD_ZERO(&rset);
         FD_SET(sockfd, &rset);
+        
         if ((n = select(sockfd + 1, &rset, NULL, NULL, &tv)) < 0)
         {
             fprintf(stderr, "select error: %s", strerror(errno));
@@ -127,14 +138,28 @@ int main(int argc, char *argv[])
         }
         else
         {
+            recvbuf = (char *)malloc(BUFSIZE);
+            memset(recvbuf, 0, BUFSIZE);
+
             fromlen = sizeof(from);
             if ((n = recvfrom(sockfd, recvbuf, BUFSIZE, 0, (struct sockaddr *)&from, &fromlen)) < 0)
             {
                 fprintf(stderr, "recvfrom error: %s", strerror(errno));
                 exit(1);
             }
+            else
+            {
+                printf("recv status: %d\n", n);
+                printf("recvfrom success\n");
+            }
+
             ip = (struct iphdr *)recvbuf;
-            icmp = (struct icmphdr *)(recvbuf + (ip->ihl << 2));
+            icmp = (struct icmphdr *)(recvbuf + sizeof(struct iphdr));
+            char *recv_mssg = (char *)(recvbuf 
+                                     + sizeof(struct iphdr) 
+                                     + sizeof(struct icmphdr));
+            printf("recv_mssg: %s\n", recv_mssg);
+
             if (icmp->type == ICMP_ECHOREPLY)
             {
                 printf("%d: %s\r", ttl, inet_ntoa(from.sin_addr));
@@ -146,9 +171,9 @@ int main(int argc, char *argv[])
             }
         }
         ttl++;
-        if (ttl > MAXTTL)
+        if (ttl > MAX_TTL)
         {
-            fprintf(stderr, "ttl > MAXTTL");
+            fprintf(stderr, "ttl > MAX_TTL");
             exit(1);
         }
     }
