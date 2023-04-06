@@ -27,8 +27,8 @@ int main(int argc, char *argv[])
 {
     int sockfd, n;
     char sendbuf[BUFSIZE], recvbuf[BUFSIZE];
-    struct iphdr *ip;
-    struct icmphdr *icmp;
+    struct ip *ip;
+    struct icmp *icmp;
     struct sockaddr_in dest, from;
     socklen_t fromlen;
     struct hostent *hp;
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
         printf("ip size:%lu\n",sizeof(struct ip));
 
         printf("dest_family:%d\n",dest.sin_family);
-        if (sendto(sockfd, sendbuf, sizeof(ip), 0, (struct sockaddr *) &dest, sizeof(dest)) < 0) {
+        if (sendto(sockfd, sendbuf, BUFSIZE, 0, (struct sockaddr *) &dest, sizeof(dest)) < 0) {
             fprintf(stderr, "sendto error: %s", strerror(errno));
             exit(1);
         }
