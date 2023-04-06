@@ -127,9 +127,8 @@ int main(int argc, char *argv[])
 
         
         printf("ip total length: %d\n", ip->tot_len);
-        printf("sizeof(sendbuf): %lu\n", sizeof(sendbuf));
         printf("dest_family:%d\n", dest.sin_family);
-        // printIP(ip);
+        printIP(ip);
 
         if (n = sendto(sockfd, sendbuf, ip->tot_len, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
         {
@@ -138,10 +137,9 @@ int main(int argc, char *argv[])
         }
         else
         {
-            // printf("%d: %s\r", ttl, inet_ntoa(dest.sin_addr));
+            printf("...... sendto success ......\n");
             printf("sizeof(sendbuf): %lu\n", sizeof(sendbuf));
             printf("send status: %d\n", n);
-            printf("sendto success\n");
         }
         
         tv.tv_sec = MAXWAIT;
@@ -149,16 +147,16 @@ int main(int argc, char *argv[])
         FD_ZERO(&rset);
         FD_SET(sockfd, &rset);
         
-        // if ((n = select(sockfd + 1, &rset, NULL, NULL, &tv)) < 0)
-        // {
-        //     fprintf(stderr, "select error: %s", strerror(errno));
-        //     exit(1);
-        // }
-        // else if (n == 0)
-        // {
-        //     printf("%d: * * *\r", ttl);
-        // }
-        // else
+        if ((n = select(sockfd + 1, &rset, NULL, NULL, &tv)) < 0)
+        {
+            fprintf(stderr, "select error: %s", strerror(errno));
+            exit(1);
+        }
+        else if (n == 0)
+        {
+            printf("%d: * * *\r", ttl);
+        }
+        else
         {
             recvbuf = (char *)malloc(BUFSIZE);
             memset(recvbuf, 0, BUFSIZE);
@@ -171,8 +169,8 @@ int main(int argc, char *argv[])
             }
             else
             {
+                printf("...... recvfrom success ......\n");
                 printf("recv status: %d\n", n);
-                printf("recvfrom success\n");
             }
 
             ip = (struct iphdr *)recvbuf;
