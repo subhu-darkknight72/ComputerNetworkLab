@@ -42,12 +42,14 @@ int main(int argc, char *argv[])
     int done = 0;
     int i;
 
-    // if (argc != 2) {
-    //     fprintf(stderr, "usage: %s hostname", argv[0]);
-    //     exit(1);
-    // }
+    if (argc != 2) {
+        fprintf(stderr, "usage: %s hostname", argv[0]);
+        exit(1);
+    }
 
-    if ((hp = gethostbyname("localhost")) == NULL)
+    strcpy(sendbuf, "GG <3, always");
+
+    if ((hp = gethostbyname(argv[1] )) == NULL)
     {
         fprintf(stderr, "gethostbyname error: %s", hstrerror(h_errno));
 
@@ -90,7 +92,7 @@ int main(int argc, char *argv[])
         ip->check = 0;
         ip->saddr = INADDR_ANY;
         ip->daddr = dest.sin_addr.s_addr;
-        ip->check = checksum(ip, sizeof(struct iphdr));
+        ip->check = in_cksum((uint16_t *)ip, sizeof(struct iphdr));
 
         icmp->type = ICMP_ECHO;
         icmp->code = 0;
@@ -105,7 +107,7 @@ int main(int argc, char *argv[])
         printf("ip size:%lu\n", sizeof(struct iphdr));
 
         printf("dest_family:%d\n", dest.sin_family);
-        if (sendto(sockfd, sendbuf, sizeof(ip), 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
+        if (sendto(sockfd, sendbuf, ip->tot_len, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
         {
             fprintf(stderr, "sendto error: %s", strerror(errno));
             exit(1);

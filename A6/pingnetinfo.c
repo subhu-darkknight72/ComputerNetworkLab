@@ -65,7 +65,7 @@ int main(){
         exit(1);
     }   
     char* ip_address = malloc(1000);
-    ip_address = inet_ntoa(*((struct in_addr *)h->h_addr));
+    ip_address = inet_ntoa(*((struct in_addr *)h->h_addr_list[0]));
     printf("IP address: %s\n", ip_address);
 
     struct sockaddr_in addr;
