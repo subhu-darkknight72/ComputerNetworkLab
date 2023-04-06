@@ -21,9 +21,24 @@
 
 #define BUFSIZE 1500
 #define MAXWAIT 5
-const int MAX_TTL=30;
+const int MAX_TTL=5;
 
 uint16_t in_cksum(uint16_t *addr, int len);
+
+void printIP(struct iphdr *ip)
+{
+    printf("-----------------------------------------------------------------\n");
+    printf("|   version:%-2d  |   hlen:%-4d   |     tos:%-2d    |  totlen:%-4d  |\n", ip->version, ip->ihl, ip->tos, ip->tot_len);
+    printf("-----------------------------------------------------------------\n");
+    printf("|           id:%-6d           |%d|%d|%d|      frag_off:%-4d      |\n", ntohs(ip->id), ip->frag_off && (1 << 15), ip->frag_off && (1 << 14), ip->frag_off && (1 << 14), ip->frag_off);
+    printf("-----------------------------------------------------------------\n");
+    printf("|    ttl:%-4d   |  protocol:%-2d  |         checksum:%-6d       |\n", ip->ttl, ip->protocol, ip->check);
+    printf("-----------------------------------------------------------------\n");
+    printf("|                    source:%-16s                    |\n", inet_ntoa(*(struct in_addr *)&ip->saddr));
+    printf("-----------------------------------------------------------------\n");
+    printf("|                 destination:%-16s                  |\n", inet_ntoa(*(struct in_addr *)&ip->daddr));
+    printf("-----------------------------------------------------------------\n");
+}
 
 int main(int argc, char *argv[])
 {
@@ -67,18 +82,20 @@ int main(int argc, char *argv[])
         fprintf(stderr, "socket error: %s", strerror(errno));
         exit(1);
     }
-    if (setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0)
+    if (setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &(int){1}, sizeof(int)) < 0)
     {
         fprintf(stderr, "setsockopt error: %s", strerror(errno));
         exit(1);
     }
 
     char *mssg;
-    printf("Enter While\n");
     while (!done)
     {
-        mssg = malloc(100);
+        printf("\n~~~~~Enter While~~~~~\n");
+
+        mssg = (char *)malloc(100);
         strcpy(mssg, "GG <3, always");
+        printf("mssg: %s\n", mssg);
 
         sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
         ip = (struct iphdr *)sendbuf;
@@ -87,7 +104,7 @@ int main(int argc, char *argv[])
         ip->version = 4;
         ip->ihl = 5;
         ip->tos = 0; // type of service (normal service)
-        ip->tot_len = sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(sendbuf);
+        ip->tot_len = sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg);
         ip->id = getpid();
         ip->frag_off = 0;
         ip->ttl = 128;
@@ -106,19 +123,24 @@ int main(int argc, char *argv[])
 
         icmp->checksum = 0;
         memcpy(sendbuf + sizeof(struct iphdr) + sizeof(struct icmphdr), mssg, strlen(mssg));
-        icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(sendbuf));
+        icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(mssg));
 
         
-        printf("sockfd: $%d$ \n", sockfd);
+        printf("ip total length: %d\n", ip->tot_len);
+        printf("sizeof(sendbuf): %lu\n", sizeof(sendbuf));
         printf("dest_family:%d\n", dest.sin_family);
-        if (sendto(sockfd, sendbuf, ip->tot_len, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
+        // printIP(ip);
+
+        if (n = sendto(sockfd, sendbuf, ip->tot_len, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
         {
             fprintf(stderr, "sendto error: %s", strerror(errno));
             exit(1);
         }
         else
         {
-            printf("%d: %s\r", ttl, inet_ntoa(dest.sin_addr));
+            // printf("%d: %s\r", ttl, inet_ntoa(dest.sin_addr));
+            printf("sizeof(sendbuf): %lu\n", sizeof(sendbuf));
+            printf("send status: %d\n", n);
             printf("sendto success\n");
         }
         
@@ -127,16 +149,16 @@ int main(int argc, char *argv[])
         FD_ZERO(&rset);
         FD_SET(sockfd, &rset);
         
-        if ((n = select(sockfd + 1, &rset, NULL, NULL, &tv)) < 0)
-        {
-            fprintf(stderr, "select error: %s", strerror(errno));
-            exit(1);
-        }
-        else if (n == 0)
-        {
-            printf("%d: * * *\r", ttl);
-        }
-        else
+        // if ((n = select(sockfd + 1, &rset, NULL, NULL, &tv)) < 0)
+        // {
+        //     fprintf(stderr, "select error: %s", strerror(errno));
+        //     exit(1);
+        // }
+        // else if (n == 0)
+        // {
+        //     printf("%d: * * *\r", ttl);
+        // }
+        // else
         {
             recvbuf = (char *)malloc(BUFSIZE);
             memset(recvbuf, 0, BUFSIZE);
