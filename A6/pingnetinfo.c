@@ -1,8 +1,8 @@
-// trace iproute to destination host using RAW sockets
-// compile: gcc -o a6 a6.c
-// run: sudo ./a6
+// 20CS30019: Gitanjali Gupta
+// 20CS10064: Subhajyoti Halder
 
-// sudo ./a6 www.google.com
+// compile: gcc -o pingnetinfo pingnetinfo.c
+// run: sudo ./pingnetinfo iitkgp.ac.in
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,14 +30,12 @@ struct timeval start_time, end_time;
 uint16_t in_cksum(uint16_t *addr, int len);
 
 void printIP(struct iphdr *ip);
+void printICMP(struct icmphdr *icmp);
 
 struct iphdr *createIPHeader(char *mssg, char *sendbuf, int ttl, struct sockaddr_in *dest);
 struct icmphdr *createICMPHeader(char *mssg, char *sendbuf);
 
-double timeval_diff(struct timeval *start, struct timeval *end)
-{
-    return (double)(end->tv_sec - start->tv_sec) * 1000000 + (double)(end->tv_usec - start->tv_usec);
-}
+double timeval_diff(struct timeval *start, struct timeval *end);
 
 struct icmphdr * send_recv(int sockfd, 
                char *sendbuf, 
@@ -52,56 +50,7 @@ struct icmphdr * send_recv(int sockfd,
                fd_set *rset,
                int ttl,
                double *rtt
-            )
-{
-    gettimeofday(&start_time, NULL);
-
-    int n;
-    if (n = sendto(sockfd, sendbuf, ip->tot_len, 0, (struct sockaddr *)dest, sizeof(*dest)) < 0)
-    {
-        fprintf(stderr, "sendto error: %s", strerror(errno));
-        exit(1);
-    }
-
-    tv->tv_sec = MAXWAIT;
-    tv->tv_usec = 0;
-    FD_ZERO(rset);
-    FD_SET(sockfd, rset);
-
-    if ((n = select(sockfd + 1, rset, NULL, NULL, tv)) < 0)
-    {
-        fprintf(stderr, "select error: %s", strerror(errno));
-        exit(1);
-    }
-    else if (n == 0)
-    {
-        printf("%d: *\n", ttl);
-    }
-    else
-    {
-        recvbuf = (char *)malloc(BUFSIZE);
-        memset(recvbuf, 0, BUFSIZE);
-
-        fromlen = sizeof(from);
-        if ((n = recvfrom(sockfd, recvbuf, BUFSIZE, 0, (struct sockaddr *)from, &fromlen)) < 0)
-        {
-            fprintf(stderr, "recvfrom error: %s", strerror(errno));
-            exit(1);
-        }
-
-        gettimeofday(&end_time, NULL);
-        *rtt = timeval_diff(&start_time, &end_time);
-
-        ip = (struct iphdr *)recvbuf;
-        icmp = (struct icmphdr *)(recvbuf + sizeof(struct iphdr));
-        char *recv_mssg = (char *)(recvbuf + sizeof(struct iphdr) + sizeof(struct icmphdr));
-    
-        // printf("recv_mssg: %s\n", recv_mssg);
-        *print_flag = 1;
-    }
-
-    return icmp;
-}
+            );
 
 int main(int argc, char *argv[])
 {
@@ -120,7 +69,7 @@ int main(int argc, char *argv[])
     int done = 0;
     int i;
 
-    if (argc != 2)
+    if (argc < 2)
     {
         fprintf(stderr, "usage: %s hostname", argv[0]);
         exit(1);
@@ -155,13 +104,16 @@ int main(int argc, char *argv[])
     strcpy(prev_ip, "110.117.2.96");
 
     int print_flag = 0;
-    printf("#hops\t\tIP Address\t\t\tLatency\t\t\tBandwidth\n");
+    printf("traceroute to %s (%s), %d hops max\n", argv[1], inet_ntoa(dest.sin_addr), MAX_TTL);
+    printf("--------------------------------------------------------------------------------------------\n");
+    printf("#hops\t|\t\tIP Address\t\t|\tLatency\t\t|\tBandwidth  |\n");
+    printf("--------------------------------------------------------------------------------------------\n");
     while (!done)
     {
+        // ~~~~~~~~~~~~ Send Message ~~~~~~~~~~~~
         mssg = (char *)malloc(100);
         strcpy(mssg, "Hello World!!");
         int mssg_len = strlen(mssg);
-        // printf("mssg: %s\n", mssg);
 
         sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
         ip = createIPHeader(mssg, sendbuf, ttl, &dest);
@@ -176,9 +128,7 @@ int main(int argc, char *argv[])
         icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl, &rtt1);
 
         
-        
-        
-        
+        // ~~~~~~~~~~~~ NULL Message ~~~~~~~~~~~~
         memset(mssg, 0, 100);
         strcpy(mssg, "");
         // printf("mssg: %s\n", mssg);
@@ -196,6 +146,7 @@ int main(int argc, char *argv[])
         icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl, &rtt);
 
 
+        // ~~~~~~~~~~~~ Print ~~~~~~~~~~~~
         if (print_flag == 1)
         {
             rtt1= abs(rtt1- rtt)/2000.0;
@@ -204,13 +155,12 @@ int main(int argc, char *argv[])
             if (icmp->type == ICMP_ECHOREPLY)
             {
                 // printf("%d: %s\n",ttl,inet_ntoa(from.sin_addr));
-                
-                printf("%d\t%s -> %s\t\t%.3f ms\t\t%.3f Mbps\n", ttl ,prev_ip, inet_ntoa(from.sin_addr), rtt/2000.0,bandwidth);
+                printf("  %d\t|%15s   -> %15s\t|\t%.3f ms\t|\t%.3f Mbps |\n", ttl ,prev_ip, inet_ntoa(from.sin_addr), rtt/2000.0,bandwidth);
                 done = 1;
             }
             else
             {
-                printf("%d\t%s -> %s\t\t%.3f ms\t\t%.3f Mbps\n", ttl, prev_ip, inet_ntoa(from.sin_addr),rtt/2000.0,bandwidth);
+                printf("  %d\t|%15s   -> %15s\t|\t%.3f ms\t|\t%.3f Mbps |\n", ttl, prev_ip, inet_ntoa(from.sin_addr),rtt/2000.0,bandwidth);
                 memset(prev_ip, 0, 100);
                 strcpy(prev_ip, inet_ntoa(from.sin_addr));
             }
@@ -224,6 +174,7 @@ int main(int argc, char *argv[])
             exit(1);
         }
     }
+    printf("--------------------------------------------------------------------------------------------\n");
     exit(0);
 }
 
@@ -267,6 +218,16 @@ void printIP(struct iphdr *ip)
     printf("-----------------------------------------------------------------\n");
 }
 
+void printICMP(struct icmphdr *icmp)
+{
+    printf("-----------------------------------------------------------------\n");
+    printf("|    type:%-2d    |    code:%-2d    |        checksum:%-6d        |\n", icmp->type, icmp->code, icmp->checksum);
+    printf("-----------------------------------------------------------------\n");
+    if (icmp->type == ICMP_ECHO || icmp->type == ICMP_ECHOREPLY)
+        printf("|           id:%-6d           |        sequence:%-6d        |\n", icmp->un.echo.id, icmp->un.echo.sequence);
+    printf("-----------------------------------------------------------------\n");
+}
+
 struct iphdr *createIPHeader(char *mssg, char *sendbuf, int ttl, struct sockaddr_in *dest)
 {
     struct iphdr *ip = (struct iphdr *)sendbuf;
@@ -295,5 +256,74 @@ struct icmphdr *createICMPHeader(char *mssg, char *sendbuf)
     icmp->un.echo.id = 123;
     icmp->un.echo.sequence = 0;
     icmp->checksum = in_cksum((uint16_t *)icmp, (int)sizeof(struct icmphdr));
+    return icmp;
+}
+
+double timeval_diff(struct timeval *start, struct timeval *end)
+{
+    return (double)(end->tv_sec - start->tv_sec) * 1000000 + (double)(end->tv_usec - start->tv_usec);
+}
+
+struct icmphdr * send_recv(int sockfd, 
+               char *sendbuf, 
+               char *recvbuf,
+               struct iphdr *ip,
+               struct icmphdr *icmp,
+               int *print_flag,
+               struct sockaddr_in *dest, 
+               struct sockaddr_in *from,
+               socklen_t fromlen,
+               struct timeval *tv,
+               fd_set *rset,
+               int ttl,
+               double *rtt
+            )
+{
+    gettimeofday(&start_time, NULL);
+
+    int n;
+    if (n = sendto(sockfd, sendbuf, ip->tot_len, 0, (struct sockaddr *)dest, sizeof(*dest)) < 0)
+    {
+        fprintf(stderr, "sendto error: %s", strerror(errno));
+        exit(1);
+    }
+
+    tv->tv_sec = MAXWAIT;
+    tv->tv_usec = 0;
+    FD_ZERO(rset);
+    FD_SET(sockfd, rset);
+
+    if ((n = select(sockfd + 1, rset, NULL, NULL, tv)) < 0)
+    {
+        fprintf(stderr, "select error: %s", strerror(errno));
+        exit(1);
+    }
+    else if (n == 0)
+    {
+        printf("  %d\t *\n", ttl);
+    }
+    else
+    {
+        recvbuf = (char *)malloc(BUFSIZE);
+        memset(recvbuf, 0, BUFSIZE);
+
+        fromlen = sizeof(from);
+        if ((n = recvfrom(sockfd, recvbuf, BUFSIZE, 0, (struct sockaddr *)from, &fromlen)) < 0)
+        {
+            fprintf(stderr, "recvfrom error: %s", strerror(errno));
+            exit(1);
+        }
+
+        gettimeofday(&end_time, NULL);
+        *rtt = timeval_diff(&start_time, &end_time);
+
+        ip = (struct iphdr *)recvbuf;
+        icmp = (struct icmphdr *)(recvbuf + sizeof(struct iphdr));
+        char *recv_mssg = (char *)(recvbuf + sizeof(struct iphdr) + sizeof(struct icmphdr));
+    
+        // printf("recv_mssg: %s\n", recv_mssg);
+        *print_flag = 1;
+    }
+
     return icmp;
 }
