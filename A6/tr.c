@@ -29,9 +29,65 @@ uint16_t in_cksum(uint16_t *addr, int len);
 
 void printIP(struct iphdr *ip);
 
-struct iphdr *createIPHeader(char *mssg, char* sendbuf, int ttl, struct sockaddr_in* dest);
-struct icmphdr *createICMPHeader(char *mssg, char* sendbuf);
+struct iphdr *createIPHeader(char *mssg, char *sendbuf, int ttl, struct sockaddr_in *dest);
+struct icmphdr *createICMPHeader(char *mssg, char *sendbuf);
 
+struct icmphdr * send_recv(int sockfd, 
+               char *sendbuf, 
+               char *recvbuf,
+               struct iphdr *ip,
+               struct icmphdr *icmp,
+               int *print_flag,
+               struct sockaddr_in *dest, 
+               struct sockaddr_in *from,
+               socklen_t fromlen,
+               struct timeval *tv,
+               fd_set *rset,
+               int ttl
+            )
+{
+    int n;
+    if (n = sendto(sockfd, sendbuf, ip->tot_len, 0, (struct sockaddr *)dest, sizeof(*dest)) < 0)
+    {
+        fprintf(stderr, "sendto error: %s", strerror(errno));
+        exit(1);
+    }
+
+    tv->tv_sec = MAXWAIT;
+    tv->tv_usec = 0;
+    FD_ZERO(rset);
+    FD_SET(sockfd, rset);
+
+    if ((n = select(sockfd + 1, rset, NULL, NULL, tv)) < 0)
+    {
+        fprintf(stderr, "select error: %s", strerror(errno));
+        exit(1);
+    }
+    else if (n == 0)
+    {
+        printf("%d: * * *\n", ttl);
+    }
+    else
+    {
+        recvbuf = (char *)malloc(BUFSIZE);
+        memset(recvbuf, 0, BUFSIZE);
+
+        fromlen = sizeof(from);
+        if ((n = recvfrom(sockfd, recvbuf, BUFSIZE, 0, (struct sockaddr *)from, &fromlen)) < 0)
+        {
+            fprintf(stderr, "recvfrom error: %s", strerror(errno));
+            exit(1);
+        }
+
+        ip = (struct iphdr *)recvbuf;
+        icmp = (struct icmphdr *)(recvbuf + sizeof(struct iphdr));
+        char *recv_mssg = (char *)(recvbuf + sizeof(struct iphdr) + sizeof(struct icmphdr));
+        // printf("recv_mssg: %s\n", recv_mssg);
+        *print_flag = 1;
+    }
+
+    return icmp;
+}
 
 int main(int argc, char *argv[])
 {
@@ -95,48 +151,12 @@ int main(int argc, char *argv[])
         icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(mssg));
 
         // printIP(ip);
+        icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl);
 
-        if (n = sendto(sockfd, sendbuf, ip->tot_len, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
+        if (print_flag == 1)
         {
-            fprintf(stderr, "sendto error: %s", strerror(errno));
-            exit(1);
-        }
-
-        tv.tv_sec = MAXWAIT;
-        tv.tv_usec = 0;
-        FD_ZERO(&rset);
-        FD_SET(sockfd, &rset);
-
-        if ((n = select(sockfd + 1, &rset, NULL, NULL, &tv)) < 0)
-        {
-            fprintf(stderr, "select error: %s", strerror(errno));
-            exit(1);
-        }
-        else if (n == 0)
-        {
-            printf("%d: * \n", ttl);
-        }
-        else
-        {
-            recvbuf = (char *)malloc(BUFSIZE);
-            memset(recvbuf, 0, BUFSIZE);
-
-            fromlen = sizeof(from);
-            if ((n = recvfrom(sockfd, recvbuf, BUFSIZE, 0, (struct sockaddr *)&from, &fromlen)) < 0)
+            if (icmp->type == ICMP_ECHOREPLY)
             {
-                fprintf(stderr, "recvfrom error: %s", strerror(errno));
-                exit(1);
-            }
-
-            ip = (struct iphdr *)recvbuf;
-            icmp = (struct icmphdr *)(recvbuf + sizeof(struct iphdr));
-            char *recv_mssg = (char *)(recvbuf + sizeof(struct iphdr) + sizeof(struct icmphdr));
-            // printf("recv_mssg: %s\n", recv_mssg);
-            print_flag = 1;
-        }
-
-        if (print_flag==1){
-            if (icmp->type == ICMP_ECHOREPLY){
                 printf("%d: %s\n", ttl, inet_ntoa(from.sin_addr));
                 done = 1;
             }
@@ -195,7 +215,7 @@ void printIP(struct iphdr *ip)
     printf("-----------------------------------------------------------------\n");
 }
 
-struct iphdr* createIPHeader(char *mssg, char* sendbuf, int ttl, struct sockaddr_in* dest)
+struct iphdr *createIPHeader(char *mssg, char *sendbuf, int ttl, struct sockaddr_in *dest)
 {
     struct iphdr *ip = (struct iphdr *)sendbuf;
     ip->version = 4;
@@ -214,7 +234,7 @@ struct iphdr* createIPHeader(char *mssg, char* sendbuf, int ttl, struct sockaddr
     return ip;
 }
 
-struct icmphdr* createICMPHeader(char *mssg, char* sendbuf)
+struct icmphdr *createICMPHeader(char *mssg, char *sendbuf)
 {
     struct icmphdr *icmp = (struct icmphdr *)(sendbuf + sizeof(struct iphdr));
     icmp->type = ICMP_ECHO;
