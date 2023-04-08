@@ -23,24 +23,15 @@
 
 #define BUFSIZE 1500
 #define MAXWAIT 5
-const int MAX_TTL=10;
+const int MAX_TTL = 10;
 
 uint16_t in_cksum(uint16_t *addr, int len);
 
-void printIP(struct iphdr *ip)
-{
-    printf("-----------------------------------------------------------------\n");
-    printf("|   version:%-2d  |   hlen:%-4d   |     tos:%-2d    |  totlen:%-4d  |\n", ip->version, ip->ihl, ip->tos, ip->tot_len);
-    printf("-----------------------------------------------------------------\n");
-    printf("|           id:%-6d           |%d|%d|%d|      frag_off:%-4d      |\n", ntohs(ip->id), ip->frag_off && (1 << 15), ip->frag_off && (1 << 14), ip->frag_off && (1 << 14), ip->frag_off);
-    printf("-----------------------------------------------------------------\n");
-    printf("|    ttl:%-4d   |  protocol:%-2d  |         checksum:%-6d       |\n", ip->ttl, ip->protocol, ip->check);
-    printf("-----------------------------------------------------------------\n");
-    printf("|                    source:%-16s                    |\n", inet_ntoa(*(struct in_addr *)&ip->saddr));
-    printf("-----------------------------------------------------------------\n");
-    printf("|                 destination:%-16s                  |\n", inet_ntoa(*(struct in_addr *)&ip->daddr));
-    printf("-----------------------------------------------------------------\n");
-}
+void printIP(struct iphdr *ip);
+
+struct iphdr *createIPHeader(char *mssg, char* sendbuf, int ttl, struct sockaddr_in* dest);
+struct icmphdr *createICMPHeader(char *mssg, char* sendbuf);
+
 
 int main(int argc, char *argv[])
 {
@@ -59,12 +50,13 @@ int main(int argc, char *argv[])
     int done = 0;
     int i;
 
-    if (argc != 2) {
+    if (argc != 2)
+    {
         fprintf(stderr, "usage: %s hostname", argv[0]);
         exit(1);
     }
 
-    if ((hp = gethostbyname(argv[1] )) == NULL)
+    if ((hp = gethostbyname(argv[1])) == NULL)
     {
         fprintf(stderr, "gethostbyname error: %s", hstrerror(h_errno));
 
@@ -91,32 +83,12 @@ int main(int argc, char *argv[])
     while (!done)
     {
         mssg = (char *)malloc(100);
-        strcpy(mssg, "GG <3, always");
-        //printf("mssg: %s\n", mssg);
+        strcpy(mssg, "Hello World!!");
+        // printf("mssg: %s\n", mssg);
 
         sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
-        ip = (struct iphdr *)sendbuf;
-        icmp = (struct icmphdr *)(sendbuf + sizeof(struct iphdr));
-
-        ip->version = 4;
-        ip->ihl = 5;
-        ip->tos = 0; // type of service (normal service)
-        ip->tot_len = sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg);
-        ip->id = getpid();
-        ip->frag_off = 0;
-        ip->ttl = ttl;
-        ip->protocol = IPPROTO_ICMP;
-        ip->check = 0;
-        ip->saddr = INADDR_ANY;
-        ip->daddr = dest.sin_addr.s_addr;
-        ip->check = in_cksum((uint16_t *)ip, sizeof(struct iphdr));
-
-        icmp->type = ICMP_ECHO;
-        icmp->code = 0;
-        icmp->checksum = 0;
-        icmp->un.echo.id = 123;
-        icmp->un.echo.sequence = 0;
-        icmp->checksum = in_cksum((uint16_t *)icmp, (int)sizeof(struct icmphdr));
+        ip = createIPHeader(mssg, sendbuf, ttl, &dest);
+        icmp = createICMPHeader(mssg, sendbuf);
 
         icmp->checksum = 0;
         memcpy(sendbuf + sizeof(struct iphdr) + sizeof(struct icmphdr), mssg, strlen(mssg));
@@ -129,12 +101,12 @@ int main(int argc, char *argv[])
             fprintf(stderr, "sendto error: %s", strerror(errno));
             exit(1);
         }
-        
+
         tv.tv_sec = MAXWAIT;
         tv.tv_usec = 0;
         FD_ZERO(&rset);
         FD_SET(sockfd, &rset);
-        
+
         if ((n = select(sockfd + 1, &rset, NULL, NULL, &tv)) < 0)
         {
             fprintf(stderr, "select error: %s", strerror(errno));
@@ -158,26 +130,20 @@ int main(int argc, char *argv[])
 
             ip = (struct iphdr *)recvbuf;
             icmp = (struct icmphdr *)(recvbuf + sizeof(struct iphdr));
-            char *recv_mssg = (char *)(recvbuf 
-                                     + sizeof(struct iphdr) 
-                                     + sizeof(struct icmphdr));
-            //printf("recv_mssg: %s\n", recv_mssg);
+            char *recv_mssg = (char *)(recvbuf + sizeof(struct iphdr) + sizeof(struct icmphdr));
+            // printf("recv_mssg: %s\n", recv_mssg);
             print_flag = 1;
         }
 
-        if (print_flag)
-        {
-            if (icmp->type == ICMP_ECHOREPLY)
-            {
-                //printf("%d: %s\n",ttl,inet_ntoa(from.sin_addr));
+        if (print_flag==1){
+            if (icmp->type == ICMP_ECHOREPLY){
                 printf("%d: %s\n", ttl, inet_ntoa(from.sin_addr));
                 done = 1;
             }
             else
-            {
                 printf("%d: %s\n", ttl, inet_ntoa(from.sin_addr));
-            }
         }
+
         ttl++;
         if (ttl > MAX_TTL)
         {
@@ -212,4 +178,50 @@ uint16_t in_cksum(uint16_t *addr, int len)
     sum += (sum >> 16);
     answer = ~sum;
     return (answer);
+}
+
+void printIP(struct iphdr *ip)
+{
+    printf("-----------------------------------------------------------------\n");
+    printf("|   version:%-2d  |   hlen:%-4d   |     tos:%-2d    |  totlen:%-4d  |\n", ip->version, ip->ihl, ip->tos, ip->tot_len);
+    printf("-----------------------------------------------------------------\n");
+    printf("|           id:%-6d           |%d|%d|%d|      frag_off:%-4d      |\n", ntohs(ip->id), ip->frag_off && (1 << 15), ip->frag_off && (1 << 14), ip->frag_off && (1 << 14), ip->frag_off);
+    printf("-----------------------------------------------------------------\n");
+    printf("|    ttl:%-4d   |  protocol:%-2d  |         checksum:%-6d       |\n", ip->ttl, ip->protocol, ip->check);
+    printf("-----------------------------------------------------------------\n");
+    printf("|                    source:%-16s                    |\n", inet_ntoa(*(struct in_addr *)&ip->saddr));
+    printf("-----------------------------------------------------------------\n");
+    printf("|                 destination:%-16s                  |\n", inet_ntoa(*(struct in_addr *)&ip->daddr));
+    printf("-----------------------------------------------------------------\n");
+}
+
+struct iphdr* createIPHeader(char *mssg, char* sendbuf, int ttl, struct sockaddr_in* dest)
+{
+    struct iphdr *ip = (struct iphdr *)sendbuf;
+    ip->version = 4;
+    ip->ihl = 5;
+    ip->tos = 0; // type of service (normal service)
+    ip->tot_len = sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg);
+    ip->id = getpid();
+    ip->frag_off = 0;
+    ip->ttl = ttl;
+    ip->protocol = IPPROTO_ICMP;
+    ip->check = 0;
+    ip->saddr = INADDR_ANY;
+    ip->daddr = dest->sin_addr.s_addr;
+    ip->check = in_cksum((uint16_t *)ip, sizeof(struct iphdr));
+
+    return ip;
+}
+
+struct icmphdr* createICMPHeader(char *mssg, char* sendbuf)
+{
+    struct icmphdr *icmp = (struct icmphdr *)(sendbuf + sizeof(struct iphdr));
+    icmp->type = ICMP_ECHO;
+    icmp->code = 0;
+    icmp->checksum = 0;
+    icmp->un.echo.id = 123;
+    icmp->un.echo.sequence = 0;
+    icmp->checksum = in_cksum((uint16_t *)icmp, (int)sizeof(struct icmphdr));
+    return icmp;
 }

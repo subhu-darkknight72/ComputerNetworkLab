@@ -9,5 +9,10 @@ local:
 default:
 	traceroute iitkgp.ac.in
 
+push:
+	git add -A
+	git commit -m "GG <3, always"
+	git push
+
 clean:
 	sudo rm -f *.o localhost tr
