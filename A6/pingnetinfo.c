@@ -95,6 +95,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    int mssg_len;
     char *mssg;
     char *prev_ip;
     prev_ip = (char *)malloc(100);
@@ -103,15 +104,32 @@ int main(int argc, char *argv[])
 
     int print_flag = 0;
     printf("traceroute to %s (%s), %d hops max\n", argv[1], inet_ntoa(dest.sin_addr), MAX_TTL);
-    printf("--------------------------------------------------------------------------------------------\n");
-    printf("#hops\t|\t\tIP Address\t\t|\tLatency\t\t|\tBandwidth  |\n");
-    printf("--------------------------------------------------------------------------------------------\n");
+    printf("----------------------------------------------------------------------------------------------\n");
+    printf("#hops\t|\t\tIP Address\t\t|\tLatency\t\t|\tBandwidth    |\n");
+    printf("----------------------------------------------------------------------------------------------\n");
     while (!done)
     {
+        // ~~~~~~~~~~~~ check for correct Hop-IP ~~~~~~~~~~~~
+        mssg = (char *)malloc(100);
+        strcpy(mssg, "Hello World!!");
+
+        sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
+        ip = createIPHeader(mssg, sendbuf, ttl, &dest);
+        icmp = createICMPHeader(mssg, sendbuf);
+
+        icmp->checksum = 0;
+        memcpy(sendbuf + sizeof(struct iphdr) + sizeof(struct icmphdr), mssg, strlen(mssg));
+        icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(mssg));
+
+        // printIP(ip);
+        double rtt0;
+        icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl, &rtt0);
+
+
         // ~~~~~~~~~~~~ Send Message ~~~~~~~~~~~~
         mssg = (char *)malloc(100);
         strcpy(mssg, "Hello World!!");
-        int mssg_len = strlen(mssg);
+        mssg_len = strlen(mssg);
 
         sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
         ip = createIPHeader(mssg, sendbuf, ttl, &dest);
@@ -148,15 +166,17 @@ int main(int argc, char *argv[])
             rtt1 = abs(rtt1 - rtt) / 2000.0;
             double bandwidth = (mssg_len * 8) / rtt1;
             bandwidth /= 1000.0;
+
+            // convert double to string
+            char bw[10];
+            sprintf(bw, "%.3f", bandwidth);
+
+
+            printf("  %d\t|%15s   -> %15s\t|\t%.3f ms\t|\t%7s Mbps |\n", ttl, prev_ip, inet_ntoa(from.sin_addr), rtt / 2000.0, bw);
             if (icmp->type == ICMP_ECHOREPLY)
-            {
-                // printf("%d: %s\n",ttl,inet_ntoa(from.sin_addr));
-                printf("  %d\t|%15s   -> %15s\t|\t%.3f ms\t|\t%.3f Mbps |\n", ttl, prev_ip, inet_ntoa(from.sin_addr), rtt / 2000.0, bandwidth);
                 done = 1;
-            }
             else
             {
-                printf("  %d\t|%15s   -> %15s\t|\t%.3f ms\t|\t%.3f Mbps |\n", ttl, prev_ip, inet_ntoa(from.sin_addr), rtt / 2000.0, bandwidth);
                 memset(prev_ip, 0, 100);
                 strcpy(prev_ip, inet_ntoa(from.sin_addr));
             }
@@ -170,7 +190,7 @@ int main(int argc, char *argv[])
             exit(1);
         }
     }
-    printf("--------------------------------------------------------------------------------------------\n");
+    printf("----------------------------------------------------------------------------------------------\n");
     exit(0);
 }
 
