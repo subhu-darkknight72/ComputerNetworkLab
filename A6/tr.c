@@ -24,6 +24,8 @@
 #define BUFSIZE 1500
 #define MAXWAIT 5
 const int MAX_TTL = 10;
+struct timeval start_time, end_time;
+
 
 uint16_t in_cksum(uint16_t *addr, int len);
 
@@ -31,6 +33,11 @@ void printIP(struct iphdr *ip);
 
 struct iphdr *createIPHeader(char *mssg, char *sendbuf, int ttl, struct sockaddr_in *dest);
 struct icmphdr *createICMPHeader(char *mssg, char *sendbuf);
+
+double timeval_diff(struct timeval *start, struct timeval *end)
+{
+    return (double)(end->tv_sec - start->tv_sec) * 1000000 + (double)(end->tv_usec - start->tv_usec);
+}
 
 struct icmphdr * send_recv(int sockfd, 
                char *sendbuf, 
@@ -43,9 +50,12 @@ struct icmphdr * send_recv(int sockfd,
                socklen_t fromlen,
                struct timeval *tv,
                fd_set *rset,
-               int ttl
+               int ttl,
+               double *rtt
             )
 {
+    gettimeofday(&start_time, NULL);
+
     int n;
     if (n = sendto(sockfd, sendbuf, ip->tot_len, 0, (struct sockaddr *)dest, sizeof(*dest)) < 0)
     {
@@ -65,7 +75,7 @@ struct icmphdr * send_recv(int sockfd,
     }
     else if (n == 0)
     {
-        printf("%d: * * *\n", ttl);
+        printf("%d: *\n", ttl);
     }
     else
     {
@@ -79,9 +89,13 @@ struct icmphdr * send_recv(int sockfd,
             exit(1);
         }
 
+        gettimeofday(&end_time, NULL);
+        *rtt = timeval_diff(&start_time, &end_time);
+
         ip = (struct iphdr *)recvbuf;
         icmp = (struct icmphdr *)(recvbuf + sizeof(struct iphdr));
         char *recv_mssg = (char *)(recvbuf + sizeof(struct iphdr) + sizeof(struct icmphdr));
+    
         // printf("recv_mssg: %s\n", recv_mssg);
         *print_flag = 1;
     }
@@ -135,11 +149,18 @@ int main(int argc, char *argv[])
     }
 
     char *mssg;
+    char *prev_ip;
+    prev_ip = (char *)malloc(100);
+    memset(prev_ip, 0, 100);
+    strcpy(prev_ip, "110.117.2.96");
+
     int print_flag = 0;
+    printf("#hops\t\tIP Address\t\t\tLatency\t\t\tBandwidth\n");
     while (!done)
     {
         mssg = (char *)malloc(100);
         strcpy(mssg, "Hello World!!");
+        int mssg_len = strlen(mssg);
         // printf("mssg: %s\n", mssg);
 
         sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
@@ -151,17 +172,48 @@ int main(int argc, char *argv[])
         icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(mssg));
 
         // printIP(ip);
-        icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl);
+        double rtt1;
+        icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl, &rtt1);
+
+        
+        
+        
+        
+        memset(mssg, 0, 100);
+        strcpy(mssg, "");
+        // printf("mssg: %s\n", mssg);
+
+        sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
+        ip = createIPHeader(mssg, sendbuf, ttl, &dest);
+        icmp = createICMPHeader(mssg, sendbuf);
+
+        icmp->checksum = 0;
+        memcpy(sendbuf + sizeof(struct iphdr) + sizeof(struct icmphdr), mssg, strlen(mssg));
+        icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(mssg));
+
+        // printIP(ip);
+        double rtt;
+        icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl, &rtt);
+
 
         if (print_flag == 1)
         {
+            rtt1= abs(rtt1- rtt)/2000.0;
+            double bandwidth = (mssg_len * 8) / rtt1;
+            bandwidth/=1000.0;
             if (icmp->type == ICMP_ECHOREPLY)
             {
-                printf("%d: %s\n", ttl, inet_ntoa(from.sin_addr));
+                // printf("%d: %s\n",ttl,inet_ntoa(from.sin_addr));
+                
+                printf("%d\t%s -> %s\t\t%.3f ms\t\t%.3f Mbps\n", ttl ,prev_ip, inet_ntoa(from.sin_addr), rtt/2000.0,bandwidth);
                 done = 1;
             }
             else
-                printf("%d: %s\n", ttl, inet_ntoa(from.sin_addr));
+            {
+                printf("%d\t%s -> %s\t\t%.3f ms\t\t%.3f Mbps\n", ttl, prev_ip, inet_ntoa(from.sin_addr),rtt/2000.0,bandwidth);
+                memset(prev_ip, 0, 100);
+                strcpy(prev_ip, inet_ntoa(from.sin_addr));
+            }
         }
 
         ttl++;

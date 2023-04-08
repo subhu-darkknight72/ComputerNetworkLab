@@ -49,11 +49,10 @@ void printIP(struct iphdr *ip)
 
 int main(int argc, char *argv[])
 {
-    int max_number_of_hops = 3;
     int sockfd, n;
-    char *sendbuf, *recvbuf,*sendbuf_bandwidth,*recvbuf_bandwidth;
-    struct iphdr *ip,*ip_bandwidth;
-    struct icmphdr *icmp,*icmp_bandwidth;
+    char *sendbuf, *recvbuf;
+    struct iphdr *ip;
+    struct icmphdr *icmp;
     struct sockaddr_in dest, from;
     socklen_t fromlen;
     struct hostent *hp;
@@ -82,9 +81,6 @@ int main(int argc, char *argv[])
     struct in_addr **addr_list = (struct in_addr **)hp->h_addr_list;
     bcopy(addr_list[0], &dest.sin_addr, hp->h_length);
 
-    // printf("dest_size:%lu\n", sizeof(dest));
-    // printf("dest_family:%d\n", dest.sin_family);
-    // printf("dest.sin_addr: %d\n",dest.sin_addr );
     printf("Number of hops\t\tIP Address\t\t\t\tRTT\t\t\t\tBandwidth\n");
     if ((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0)
     {
@@ -98,7 +94,6 @@ int main(int argc, char *argv[])
     }
 
     char *mssg1;
-    char *empty;
     char *prev_ip;
     prev_ip = (char *)malloc(100);
     memset(prev_ip, 0, 100);
@@ -107,7 +102,7 @@ int main(int argc, char *argv[])
     while (!done)
     {
         // printf("\n~~~~~Enter While~~~~~\n");
-        double rtt1;
+        double rtt1, rtt;
         struct timeval start_time, end_time;
         mssg1 = (char *)malloc(100);
         memset(mssg1, 0, 100);
@@ -186,7 +181,7 @@ int main(int argc, char *argv[])
             memset(recvbuf, 0, BUFSIZE);
 
             fromlen = sizeof(from);
-            double rtt;
+            // double rtt;
             if ((n = recvfrom(sockfd, recvbuf, BUFSIZE, 0, (struct sockaddr *)&from, &fromlen)) < 0)
             {
                 fprintf(stderr, "recvfrom error: %s", strerror(errno));
@@ -298,7 +293,7 @@ int main(int argc, char *argv[])
             memset(recvbuf, 0, BUFSIZE);
 
             fromlen = sizeof(from);
-            double rtt;
+            // double rtt;
             if ((n = recvfrom(sockfd, recvbuf, BUFSIZE, 0, (struct sockaddr *)&from, &fromlen)) < 0)
             {
                 fprintf(stderr, "recvfrom error: %s", strerror(errno));
@@ -306,9 +301,6 @@ int main(int argc, char *argv[])
             }
             else
             {
-                // printf("...... recvfrom success ......\n");
-                // printf("recv status: %d\n", n);
-                // Get end time
                 gettimeofday(&end_time, NULL);
 
                 // Calculate RTT
@@ -326,12 +318,12 @@ int main(int argc, char *argv[])
             {
                 // printf("%d: %s\n",ttl,inet_ntoa(from.sin_addr));
                 
-                printf("%d\t\t\t%s - %s\t\tlatency: %.3f ms\t\tbandwidth: %.3f Mbps\n", ttl, inet_ntoa(from.sin_addr),prev_ip, rtt/2000.0,bandwidth);
+                printf("%d\t\t\t%s - %s\t\tlatency: %.3f ms\t\tbandwidth: %.3f Mbps\n", ttl ,prev_ip, inet_ntoa(from.sin_addr), rtt/2000.0,bandwidth);
                 done = 1;
             }
             else
             {
-                printf("%d\t\t\t%s - %s\t\tlatency: %.3f ms\t\tbandwidth: %.3f Mbps\n", ttl, inet_ntoa(from.sin_addr),prev_ip,rtt/2000.0,bandwidth);
+                printf("%d\t\t\t%s - %s\t\tlatency: %.3f ms\t\tbandwidth: %.3f Mbps\n", ttl, prev_ip, inet_ntoa(from.sin_addr),rtt/2000.0,bandwidth);
                 memset(prev_ip, 0, 100);
                 strcpy(prev_ip, inet_ntoa(from.sin_addr));
             }
