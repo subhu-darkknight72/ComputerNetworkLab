@@ -4,7 +4,15 @@ iitkgp:
 
 local:
 	sudo gcc -o tr tr.c
-	./tr localhost
+	sudo ./tr localhost
+
+moodle:
+	sudo gcc -o tr tr.c
+	sudo ./tr kgpmoodlenew.iitkgp.ac.in
+
+csemoodle:
+	sudo gcc -o tr tr.c
+	sudo ./tr moodlecse.iitkgp.ac.in
 
 default:
 	traceroute iitkgp.ac.in
