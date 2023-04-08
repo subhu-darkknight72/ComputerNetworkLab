@@ -18,6 +18,8 @@
 #include <errno.h>
 
 #include <sys/select.h>
+#include <sys/time.h>
+#include <time.h>
 
 #define BUFSIZE 1500
 #define MAXWAIT 5
@@ -85,6 +87,7 @@ int main(int argc, char *argv[])
     }
 
     char *mssg;
+    int print_flag = 0;
     while (!done)
     {
         mssg = (char *)malloc(100);
@@ -139,7 +142,7 @@ int main(int argc, char *argv[])
         }
         else if (n == 0)
         {
-            printf("%d: * * *\n", ttl);
+            printf("%d: * \n", ttl);
         }
         else
         {
@@ -159,7 +162,11 @@ int main(int argc, char *argv[])
                                      + sizeof(struct iphdr) 
                                      + sizeof(struct icmphdr));
             //printf("recv_mssg: %s\n", recv_mssg);
+            print_flag = 1;
+        }
 
+        if (print_flag)
+        {
             if (icmp->type == ICMP_ECHOREPLY)
             {
                 //printf("%d: %s\n",ttl,inet_ntoa(from.sin_addr));
