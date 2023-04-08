@@ -1,18 +1,18 @@
 iitkgp:
-	sudo gcc -o tr tr.c
-	sudo ./tr iitkgp.ac.in
+	sudo gcc -o pgti pingnetinfo.c
+	sudo ./pgti iitkgp.ac.in
 
 local:
-	sudo gcc -o tr tr.c
-	sudo ./tr localhost
+	sudo gcc -o pgti pingnetinfo.c
+	sudo ./pgti localhost
 
 moodle:
-	sudo gcc -o tr tr.c
-	sudo ./tr kgpmoodlenew.iitkgp.ac.in
+	sudo gcc -o pgti pingnetinfo.c
+	sudo ./pgti kgpmoodlenew.iitkgp.ac.in
 
 csemoodle:
-	sudo gcc -o tr tr.c
-	sudo ./tr moodlecse.iitkgp.ac.in
+	sudo gcc -o pgti pingnetinfo.c
+	sudo ./pgti moodlecse.iitkgp.ac.in
 
 gitu:
 	gcc -o ass ass6.c 
@@ -27,4 +27,4 @@ push:
 	git push
 
 clean:
-	sudo rm -f *.o localhost tr ass
+	sudo rm -f *.o localhost pgti ass
