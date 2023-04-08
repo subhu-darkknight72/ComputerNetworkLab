@@ -18,12 +18,19 @@
 #include <errno.h>
 
 #include <sys/select.h>
+#include <sys/time.h>
 
 #define BUFSIZE 1500
 #define MAXWAIT 5
-const int MAX_TTL=10;
+const int MAX_TTL = 10;
 
 uint16_t in_cksum(uint16_t *addr, int len);
+
+// Function to calculate the time difference between two timeval structs
+double timeval_diff(struct timeval *start, struct timeval *end)
+{
+    return (double)(end->tv_sec - start->tv_sec) * 1000000 + (double)(end->tv_usec - start->tv_usec);
+}
 
 void printIP(struct iphdr *ip)
 {
@@ -57,12 +64,13 @@ int main(int argc, char *argv[])
     int done = 0;
     int i;
 
-    if (argc != 2) {
+    if (argc != 2)
+    {
         fprintf(stderr, "usage: %s hostname", argv[0]);
         exit(1);
     }
 
-    if ((hp = gethostbyname(argv[1] )) == NULL)
+    if ((hp = gethostbyname(argv[1])) == NULL)
     {
         fprintf(stderr, "gethostbyname error: %s", hstrerror(h_errno));
 
@@ -91,11 +99,11 @@ int main(int argc, char *argv[])
     char *mssg;
     while (!done)
     {
-        //printf("\n~~~~~Enter While~~~~~\n");
-
+        // printf("\n~~~~~Enter While~~~~~\n");
+        struct timeval start_time, end_time;
         mssg = (char *)malloc(100);
         strcpy(mssg, "GG <3, always");
-        //printf("mssg: %s\n", mssg);
+        // printf("mssg: %s\n", mssg);
 
         sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
         ip = (struct iphdr *)sendbuf;
@@ -125,10 +133,12 @@ int main(int argc, char *argv[])
         memcpy(sendbuf + sizeof(struct iphdr) + sizeof(struct icmphdr), mssg, strlen(mssg));
         icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(mssg));
 
-        
         // printf("ip total length: %d\n", ip->tot_len);
         // printf("dest_family:%d\n", dest.sin_family);
         // printIP(ip);
+
+        // Get start time
+        gettimeofday(&start_time, NULL);
 
         if (n = sendto(sockfd, sendbuf, ip->tot_len, 0, (struct sockaddr *)&dest, sizeof(dest)) < 0)
         {
@@ -141,12 +151,12 @@ int main(int argc, char *argv[])
             // printf("sizeof(sendbuf): %lu\n", sizeof(sendbuf));
             // printf("send status: %d\n", n);
         }
-        
+
         tv.tv_sec = MAXWAIT;
         tv.tv_usec = 0;
         FD_ZERO(&rset);
         FD_SET(sockfd, &rset);
-        
+
         if ((n = select(sockfd + 1, &rset, NULL, NULL, &tv)) < 0)
         {
             fprintf(stderr, "select error: %s", strerror(errno));
@@ -162,6 +172,7 @@ int main(int argc, char *argv[])
             memset(recvbuf, 0, BUFSIZE);
 
             fromlen = sizeof(from);
+            double rtt;
             if ((n = recvfrom(sockfd, recvbuf, BUFSIZE, 0, (struct sockaddr *)&from, &fromlen)) < 0)
             {
                 fprintf(stderr, "recvfrom error: %s", strerror(errno));
@@ -171,24 +182,27 @@ int main(int argc, char *argv[])
             {
                 // printf("...... recvfrom success ......\n");
                 // printf("recv status: %d\n", n);
+                // Get end time
+                gettimeofday(&end_time, NULL);
+
+                // Calculate RTT
+                rtt = timeval_diff(&start_time, &end_time);
             }
 
             ip = (struct iphdr *)recvbuf;
             icmp = (struct icmphdr *)(recvbuf + sizeof(struct iphdr));
-            char *recv_mssg = (char *)(recvbuf 
-                                     + sizeof(struct iphdr) 
-                                     + sizeof(struct icmphdr));
-            //printf("recv_mssg: %s\n", recv_mssg);
+            char *recv_mssg = (char *)(recvbuf + sizeof(struct iphdr) + sizeof(struct icmphdr));
+            // printf("recv_mssg: %s\n", recv_mssg);
 
             if (icmp->type == ICMP_ECHOREPLY)
             {
-                //printf("%d: %s\n",ttl,inet_ntoa(from.sin_addr));
-                printf("%d: %s\n", ttl, inet_ntoa(from.sin_addr));
+                // printf("%d: %s\n",ttl,inet_ntoa(from.sin_addr));
+                printf("%d: %s %.3f ms\n", ttl, inet_ntoa(from.sin_addr), rtt/1000.0);
                 done = 1;
             }
             else
             {
-                printf("%d: %s\n", ttl, inet_ntoa(from.sin_addr));
+                printf("%d: %s %.3f ms\n", ttl, inet_ntoa(from.sin_addr),rtt/1000.0);
             }
         }
         ttl++;
