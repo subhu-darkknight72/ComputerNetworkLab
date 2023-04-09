@@ -344,25 +344,26 @@ void printICMP(struct icmphdr *icmp)
 
 void printTCP(const struct tcphdr *tcp)
 {
-    fprintf(file, "-----------------------------------------------------------------\n");
-    fprintf(file, "|         source:%-6d         |          dest:%-6d          |\n", ntohs(tcp->source), ntohs(tcp->dest));
-    fprintf(file, "-----------------------------------------------------------------\n");
-    fprintf(file, "|                       sequence:%-8d                       |\n", tcp->seq);
-    fprintf(file, "|                         ack:%-8d                          |\n", tcp->ack_seq);
-    fprintf(file, "-----------------------------------------------------------------\n");
-    fprintf(file, "| hlen:%-4d|reserved|%d|%d|%d|%d|%d|%d|          rwnd:%-6d          |\n", tcp->doff, tcp->urg, tcp->ack, tcp->psh, tcp->rst, tcp->syn, tcp->fin, tcp->window);
-    fprintf(file, "-----------------------------------------------------------------\n");
-    fprintf(file, "|          check:%-6d         |         urgptr:%-6d         |\n", tcp->check, tcp->urg_ptr);
-    fprintf(file, "-----------------------------------------------------------------file");
+    fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file, "|       SourcePort:%-6d       |      Destination Port:%-6d      |\n", ntohs(tcp->source), ntohs(tcp->dest));
+    fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file, "|                    SequenceNumber:%-8d                    |\n", tcp->seq);
+    fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file, "|                 AcknoledgmentNumber:%-8d                  |\n", tcp->ack_seq);
+    fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file, "| Doff:%-4d|Reserved|%d|%d|%d|%d|%d|%d|       WindowSize:%-6d       |\n", tcp->doff, tcp->urg, tcp->ack, tcp->psh, tcp->rst, tcp->syn, tcp->fin, tcp->window);
+    fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file, "|        Checksum :%-6d       |     Urgent Pointer:%-6d     |\n", tcp->check, tcp->urg_ptr);
+    fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 void printUDP(const struct udphdr *udp)
 {
-    fprintf(file, "-----------------------------------------------------------------\n");
-    fprintf(file, "|         source:%-6d         |          dest:%-6d          |\n", ntohs(udp->source), ntohs(udp->dest));
-    fprintf(file, "-----------------------------------------------------------------\n");
-    fprintf(file, "|           len:%-6d          |          check:%-6d         |\n", ntohs(udp->len), udp->check);
-    fprintf(file, "-----------------------------------------------------------------\n");
+    fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file, "|      SourcePort:%-6d      |     Destination Port:%-6d     |\n", ntohs(udp->source), ntohs(udp->dest));
+    fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file, "|         Length:%-6d         |         Checksum:%-6d       |\n", ntohs(udp->len), udp->check);
+    fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 struct iphdr *createIPHeader(char *mssg, char *sendbuf, int ttl, struct sockaddr_in *dest)
@@ -473,4 +474,3 @@ struct icmphdr *send_recv(int sockfd,
 
     return icmp;
 }
-
