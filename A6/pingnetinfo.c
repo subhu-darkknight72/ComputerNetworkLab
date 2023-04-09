@@ -23,7 +23,7 @@
 
 #define BUFSIZE 1500
 #define MAXWAIT 5
-const int MAX_TTL = 10;
+int MAX_TTL = 10;
 struct timeval start_time, end_time;
 FILE *file;
 
@@ -87,7 +87,9 @@ int main(int argc, char *argv[])
         iter_count = atoi(argv[2]);
     if (argc >= 4)
         T = atoi(argv[3]);
-    
+    if (argc >= 5)
+        MAX_TTL = atoi(argv[4]);
+
 
     if ((hp = gethostbyname(argv[1])) == NULL)
     {
@@ -121,6 +123,7 @@ int main(int argc, char *argv[])
     int print_flag = 0;
     printf("NOTE: The IP Headers and ICMP Headers are printed in the output file.\n");
     printf("Output file: pingnetinfo_output.txt\n");
+    printf("#probes: %d, probe interval: %dsec\n", iter_count, T);
     printf("traceroute to %s (%s), %d hops max\n", argv[1], inet_ntoa(dest.sin_addr), MAX_TTL);
     printf("----------------------------------------------------------------------------------------------\n");
     printf("#hops\t|\t\tIP Address\t\t|\tLatency\t\t|\tBandwidth    |\n");
@@ -132,10 +135,10 @@ int main(int argc, char *argv[])
         curr_ip = (char *)malloc(100);
         temp_ip = (char *)malloc(100);
 
-        int i=0;
+        int i=0, drop_cnt=0;
         while(i<5){
             mssg = (char *)malloc(100);
-            strcpy(mssg, "Hello World!!");
+            strcpy(mssg, "AGkMKB");
 
             sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
             ip = createIPHeader(mssg, sendbuf, ttl, &dest);
@@ -157,6 +160,10 @@ int main(int argc, char *argv[])
                     strcpy(curr_ip, temp_ip);
                     // printf("Restarted %s %s\n", curr_ip, temp_ip);
                     i = 0;
+                    if(drop_cnt++ > 5){
+                        printf("Dropped 5-times. Exiting...\n");
+                        exit(1);
+                    }
                     sleep(1);
                     continue;
                 }

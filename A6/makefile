@@ -27,4 +27,4 @@ push:
 	git push
 
 clean:
-	sudo rm -f *.o localhost pgti ass
+	sudo rm -f *.o localhost pgti ass pingnetinfo pingnetinfo_output.txt
