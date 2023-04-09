@@ -23,7 +23,7 @@ default:
 
 push:
 	git add -A
-	git commit -m "GG <3, always"
+	git commit -m "GG <3"
 	git push
 
 clean:
