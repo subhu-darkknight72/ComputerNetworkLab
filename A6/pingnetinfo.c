@@ -2,7 +2,9 @@
 // 20CS10064: Subhajyoti Halder
 
 // compile: gcc -o pingnetinfo pingnetinfo.c
-// run: sudo ./pingnetinfo iitkgp.ac.in 5 1
+// run: sudo ./pingnetinfo iitkgp.ac.in 5 1 64
+
+// run: sudo ./pingnetinfo <server> <no. of probes per hop> <propbe delay> <max no. of hops>
 
 #include <stdio.h>
 #include <stdlib.h>
