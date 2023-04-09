@@ -6,7 +6,7 @@
 
 // run: sudo ./pingnetinfo <server> <no. of probes per hop> <propbe delay> <max no. of hops>
 
-//  Makefile code for testing the code:
+//  Makefile for testing the code:
 /*
 iitkgp:
 	sudo gcc -o pgti pingnetinfo.c
