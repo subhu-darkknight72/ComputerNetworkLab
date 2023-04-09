@@ -132,6 +132,9 @@ int main(int argc, char *argv[])
     printf("----------------------------------------------------------------------------------------------\n");
     while (!done)
     {
+        fprintf(file,"\n======================================================================");
+        fprintf(file,"\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~HOP:%d~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",ttl);
+        fprintf(file,"======================================================================\n");
         // ~~~~~~~~~~~~ check for correct Hop-IP ~~~~~~~~~~~~
         char *curr_ip, *temp_ip;
         curr_ip = (char *)malloc(100);
@@ -152,7 +155,6 @@ int main(int argc, char *argv[])
 
             double rtt0;
             icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl, &rtt0);
-            // print IP address of the hop
 
             if(i==0)
                 strcpy(curr_ip, inet_ntoa(from.sin_addr));
@@ -361,8 +363,8 @@ struct icmphdr *send_recv(int sockfd,
         fprintf(stderr, "sendto error: %s", strerror(errno));
         exit(1);
     }
-
-    fprintf(file,"\n\n~~~~~~~~~~~~~~~~~~~~~~~~Send IP Header~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    
+    fprintf(file,"\n~~~~~~~~~~~~~~~~~~~~~~~~Send IP Header~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printIP(ip);
     fprintf(file,"\n\n~~~~~~~~~~~~~~~~~~~~~~~Send ICMP Header~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     printICMP(icmp);

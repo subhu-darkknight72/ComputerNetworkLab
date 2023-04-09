@@ -1,6 +1,6 @@
 iitkgp:
 	sudo gcc -o pgti pingnetinfo.c
-	sudo ./pgti iitkgp.ac.in 5 2
+	sudo ./pgti iitkgp.ac.in 5 0 64
 
 local:
 	sudo gcc -o pgti pingnetinfo.c
@@ -8,11 +8,11 @@ local:
 
 moodle:
 	sudo gcc -o pgti pingnetinfo.c
-	sudo ./pgti kgpmoodlenew.iitkgp.ac.in
+	sudo ./pgti kgpmoodlenew.iitkgp.ac.in 5 1 10
 
 csemoodle:
 	sudo gcc -o pgti pingnetinfo.c
-	sudo ./pgti moodlecse.iitkgp.ac.in
+	sudo ./pgti moodlecse.iitkgp.ac.in 4 2
 
 gitu:
 	gcc -o ass ass6.c 
