@@ -280,27 +280,27 @@ uint16_t in_cksum(uint16_t *addr, int len)
 
 void printIP(struct iphdr *ip)
 {
-    fprintf(file,"-----------------------------------------------------------------\n");
-    fprintf(file,"|   version:%-2d  |   hlen:%-4d   |     tos:%-2d    |  totlen:%-4d  |\n", ip->version, ip->ihl, ip->tos, ip->tot_len);
-    fprintf(file,"-----------------------------------------------------------------\n");
-    fprintf(file,"|           id:%-6d           |%d|%d|%d|      frag_off:%-4d      |\n", ntohs(ip->id), ip->frag_off && (1 << 15), ip->frag_off && (1 << 14), ip->frag_off && (1 << 14), ip->frag_off);
-    fprintf(file,"-----------------------------------------------------------------\n");
-    fprintf(file,"|    ttl:%-4d   |  protocol:%-2d  |         checksum:%-6d       |\n", ip->ttl, ip->protocol, ip->check);
-    fprintf(file,"-----------------------------------------------------------------\n");
-    fprintf(file,"|                    source:%-16s                    |\n", inet_ntoa(*(struct in_addr *)&ip->saddr));
-    fprintf(file,"-----------------------------------------------------------------\n");
-    fprintf(file,"|                 destination:%-16s                  |\n", inet_ntoa(*(struct in_addr *)&ip->daddr));
-    fprintf(file,"-----------------------------------------------------------------\n");
+    fprintf(file,"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file,"|  Version:%-2d |  IHL:%-4d  |   TOS:%-2d  |   TotalLength:%-4d     |\n", ip->version, ip->ihl, ip->tos, ip->tot_len);
+    fprintf(file,"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file,"|   Identification:%-6d   |%d|%d|%d|  FragmentationOffset:%-4d   |\n", ntohs(ip->id), ip->frag_off && (1 << 15), ip->frag_off && (1 << 14), ip->frag_off && (1 << 14), ip->frag_off);
+    fprintf(file,"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file,"|    TTL:%-4d   |  Protocol:%-2d  |        IPChecksum:%-6d      |\n", ip->ttl, ip->protocol, ip->check);
+    fprintf(file,"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file,"|                Source Address:%-16s                |\n", inet_ntoa(*(struct in_addr *)&ip->saddr));
+    fprintf(file,"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file,"|             Destination Address:%-16s              |\n", inet_ntoa(*(struct in_addr *)&ip->daddr));
+    fprintf(file,"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 void printICMP(struct icmphdr *icmp)
 {
-    fprintf(file, "-----------------------------------------------------------------\n");
-    fprintf(file, "|    type:%-2d    |    code:%-2d    |        checksum:%-6d        |\n", icmp->type, icmp->code, icmp->checksum);
-    fprintf(file, "-----------------------------------------------------------------\n");
+    fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    fprintf(file, "|    Type:%-2d    |    Code:%-2d    |      ICMPchecksum:%-6d      |\n", icmp->type, icmp->code, icmp->checksum);
+    fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     if (icmp->type == ICMP_ECHO || icmp->type == ICMP_ECHOREPLY)
-        fprintf(file, "|           id:%-6d           |        sequence:%-6d        |\n", icmp->un.echo.id, icmp->un.echo.sequence);
-    fprintf(file, "-----------------------------------------------------------------\n");
+        fprintf(file, "|       Identifier:%-6d       |      SequenceNumber:%-6d    |\n", icmp->un.echo.id, icmp->un.echo.sequence);
+    fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 struct iphdr *createIPHeader(char *mssg, char *sendbuf, int ttl, struct sockaddr_in *dest)
