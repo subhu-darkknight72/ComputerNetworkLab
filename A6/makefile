@@ -1,6 +1,6 @@
 iitkgp:
 	sudo gcc -o pgti pingnetinfo.c
-	sudo ./pgti iitkgp.ac.in
+	sudo ./pgti iitkgp.ac.in 5 2
 
 local:
 	sudo gcc -o pgti pingnetinfo.c

@@ -25,6 +25,8 @@
 #define MAXWAIT 5
 const int MAX_TTL = 10;
 struct timeval start_time, end_time;
+FILE *file;
+
 
 uint16_t in_cksum(uint16_t *addr, int len);
 
@@ -65,12 +67,25 @@ int main(int argc, char *argv[])
     int seq = 0;
     int ttl = 1;
     int done = 0;
-    int i;
+    int iter_count = 5;
+    int T=1;
+
+    file = fopen("pingnetinfo_output.txt", "w");
+    if (file == NULL)
+    {
+        printf("Error opening file!\n");
+        exit(1);
+    }
 
     if (argc < 2)
     {
         fprintf(stderr, "usage: %s hostname", argv[0]);
         exit(1);
+    }
+
+    if (argc >= 3){
+        iter_count = atoi(argv[2]);
+        T = atoi(argv[3]);
     }
 
     if ((hp = gethostbyname(argv[1])) == NULL)
@@ -103,6 +118,8 @@ int main(int argc, char *argv[])
     strcpy(prev_ip, "110.117.2.96");
 
     int print_flag = 0;
+    printf("NOTE: The IP Headers and ICMP Headers are printed in the output file.\n");
+    printf("Output file: pingnetinfo_output.txt\n");
     printf("traceroute to %s (%s), %d hops max\n", argv[1], inet_ntoa(dest.sin_addr), MAX_TTL);
     printf("----------------------------------------------------------------------------------------------\n");
     printf("#hops\t|\t\tIP Address\t\t|\tLatency\t\t|\tBandwidth    |\n");
@@ -110,55 +127,87 @@ int main(int argc, char *argv[])
     while (!done)
     {
         // ~~~~~~~~~~~~ check for correct Hop-IP ~~~~~~~~~~~~
-        mssg = (char *)malloc(100);
-        strcpy(mssg, "Hello World!!");
+        char *curr_ip, *temp_ip;
+        curr_ip = (char *)malloc(100);
+        temp_ip = (char *)malloc(100);
 
-        sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
-        ip = createIPHeader(mssg, sendbuf, ttl, &dest);
-        icmp = createICMPHeader(mssg, sendbuf);
+        int i=0;
+        while(i<5){
+            mssg = (char *)malloc(100);
+            strcpy(mssg, "Hello World!!");
 
-        icmp->checksum = 0;
-        memcpy(sendbuf + sizeof(struct iphdr) + sizeof(struct icmphdr), mssg, strlen(mssg));
-        icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(mssg));
+            sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
+            ip = createIPHeader(mssg, sendbuf, ttl, &dest);
+            icmp = createICMPHeader(mssg, sendbuf);
 
-        // printIP(ip);
-        double rtt0;
-        icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl, &rtt0);
+            icmp->checksum = 0;
+            memcpy(sendbuf + sizeof(struct iphdr) + sizeof(struct icmphdr), mssg, strlen(mssg));
+            icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(mssg));
+
+            double rtt0;
+            icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl, &rtt0);
+            // print IP address of the hop
+
+            if(i==0)
+                strcpy(curr_ip, inet_ntoa(from.sin_addr));
+            else{
+                strcpy(temp_ip, inet_ntoa(from.sin_addr));
+                if(strcmp(curr_ip, temp_ip) != 0){
+                    strcpy(curr_ip, temp_ip);
+                    // printf("Restarted %s %s\n", curr_ip, temp_ip);
+                    i = 0;
+                    sleep(1);
+                    continue;
+                }
+            }
+            i++;
+        }
 
 
-        // ~~~~~~~~~~~~ Send Message ~~~~~~~~~~~~
-        mssg = (char *)malloc(100);
-        strcpy(mssg, "Hello World!!");
-        mssg_len = strlen(mssg);
+        double rtt1=0, rtt=0;
+        for(int i=0; i<iter_count; i++){
 
-        sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
-        ip = createIPHeader(mssg, sendbuf, ttl, &dest);
-        icmp = createICMPHeader(mssg, sendbuf);
+            // ~~~~~~~~~~~~ Send Message ~~~~~~~~~~~~
+            mssg = (char *)malloc(100);
+            strcpy(mssg, "Hello World!!");
+            mssg_len = strlen(mssg);
 
-        icmp->checksum = 0;
-        memcpy(sendbuf + sizeof(struct iphdr) + sizeof(struct icmphdr), mssg, strlen(mssg));
-        icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(mssg));
+            sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
+            ip = createIPHeader(mssg, sendbuf, ttl, &dest);
+            icmp = createICMPHeader(mssg, sendbuf);
 
-        // printIP(ip);
-        double rtt1;
-        icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl, &rtt1);
+            icmp->checksum = 0;
+            memcpy(sendbuf + sizeof(struct iphdr) + sizeof(struct icmphdr), mssg, strlen(mssg));
+            icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(mssg));
 
-        // ~~~~~~~~~~~~ NULL Message ~~~~~~~~~~~~
-        memset(mssg, 0, 100);
-        strcpy(mssg, "");
-        // printf("mssg: %s\n", mssg);
+            double rtt_1;
+            icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl, &rtt_1);
+            rtt1 += rtt_1; 
 
-        sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
-        ip = createIPHeader(mssg, sendbuf, ttl, &dest);
-        icmp = createICMPHeader(mssg, sendbuf);
 
-        icmp->checksum = 0;
-        memcpy(sendbuf + sizeof(struct iphdr) + sizeof(struct icmphdr), mssg, strlen(mssg));
-        icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(mssg));
+            // ~~~~~~~~~~~~ NULL Message ~~~~~~~~~~~~
+            memset(mssg, 0, 100);
+            strcpy(mssg, "");
+            // printf("mssg: %s\n", mssg);
 
-        // printIP(ip);
-        double rtt;
-        icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl, &rtt);
+            sendbuf = (char *)malloc(sizeof(struct iphdr) + sizeof(struct icmphdr) + strlen(mssg));
+            ip = createIPHeader(mssg, sendbuf, ttl, &dest);
+            icmp = createICMPHeader(mssg, sendbuf);
+
+            icmp->checksum = 0;
+            memcpy(sendbuf + sizeof(struct iphdr) + sizeof(struct icmphdr), mssg, strlen(mssg));
+            icmp->checksum = in_cksum((uint16_t *)(sendbuf + sizeof(struct iphdr)), sizeof(struct icmphdr) + strlen(mssg));
+
+            double rtt_2;
+            icmp = send_recv(sockfd, sendbuf, recvbuf, ip, icmp, &print_flag, &dest, &from, fromlen, &tv, &rset, ttl, &rtt_2);
+            rtt = rtt + rtt_2;
+
+            // wait for T seconds
+            sleep(T);
+        }
+
+        rtt /= iter_count;
+        rtt1 /= iter_count;
 
         // ~~~~~~~~~~~~ Print ~~~~~~~~~~~~
         if (print_flag == 1)
@@ -221,27 +270,27 @@ uint16_t in_cksum(uint16_t *addr, int len)
 
 void printIP(struct iphdr *ip)
 {
-    printf("-----------------------------------------------------------------\n");
-    printf("|   version:%-2d  |   hlen:%-4d   |     tos:%-2d    |  totlen:%-4d  |\n", ip->version, ip->ihl, ip->tos, ip->tot_len);
-    printf("-----------------------------------------------------------------\n");
-    printf("|           id:%-6d           |%d|%d|%d|      frag_off:%-4d      |\n", ntohs(ip->id), ip->frag_off && (1 << 15), ip->frag_off && (1 << 14), ip->frag_off && (1 << 14), ip->frag_off);
-    printf("-----------------------------------------------------------------\n");
-    printf("|    ttl:%-4d   |  protocol:%-2d  |         checksum:%-6d       |\n", ip->ttl, ip->protocol, ip->check);
-    printf("-----------------------------------------------------------------\n");
-    printf("|                    source:%-16s                    |\n", inet_ntoa(*(struct in_addr *)&ip->saddr));
-    printf("-----------------------------------------------------------------\n");
-    printf("|                 destination:%-16s                  |\n", inet_ntoa(*(struct in_addr *)&ip->daddr));
-    printf("-----------------------------------------------------------------\n");
+    fprintf(file,"-----------------------------------------------------------------\n");
+    fprintf(file,"|   version:%-2d  |   hlen:%-4d   |     tos:%-2d    |  totlen:%-4d  |\n", ip->version, ip->ihl, ip->tos, ip->tot_len);
+    fprintf(file,"-----------------------------------------------------------------\n");
+    fprintf(file,"|           id:%-6d           |%d|%d|%d|      frag_off:%-4d      |\n", ntohs(ip->id), ip->frag_off && (1 << 15), ip->frag_off && (1 << 14), ip->frag_off && (1 << 14), ip->frag_off);
+    fprintf(file,"-----------------------------------------------------------------\n");
+    fprintf(file,"|    ttl:%-4d   |  protocol:%-2d  |         checksum:%-6d       |\n", ip->ttl, ip->protocol, ip->check);
+    fprintf(file,"-----------------------------------------------------------------\n");
+    fprintf(file,"|                    source:%-16s                    |\n", inet_ntoa(*(struct in_addr *)&ip->saddr));
+    fprintf(file,"-----------------------------------------------------------------\n");
+    fprintf(file,"|                 destination:%-16s                  |\n", inet_ntoa(*(struct in_addr *)&ip->daddr));
+    fprintf(file,"-----------------------------------------------------------------\n");
 }
 
 void printICMP(struct icmphdr *icmp)
 {
-    printf("-----------------------------------------------------------------\n");
-    printf("|    type:%-2d    |    code:%-2d    |        checksum:%-6d        |\n", icmp->type, icmp->code, icmp->checksum);
-    printf("-----------------------------------------------------------------\n");
+    fprintf(file, "-----------------------------------------------------------------\n");
+    fprintf(file, "|    type:%-2d    |    code:%-2d    |        checksum:%-6d        |\n", icmp->type, icmp->code, icmp->checksum);
+    fprintf(file, "-----------------------------------------------------------------\n");
     if (icmp->type == ICMP_ECHO || icmp->type == ICMP_ECHOREPLY)
-        printf("|           id:%-6d           |        sequence:%-6d        |\n", icmp->un.echo.id, icmp->un.echo.sequence);
-    printf("-----------------------------------------------------------------\n");
+        fprintf(file, "|           id:%-6d           |        sequence:%-6d        |\n", icmp->un.echo.id, icmp->un.echo.sequence);
+    fprintf(file, "-----------------------------------------------------------------\n");
 }
 
 struct iphdr *createIPHeader(char *mssg, char *sendbuf, int ttl, struct sockaddr_in *dest)
@@ -303,10 +352,10 @@ struct icmphdr *send_recv(int sockfd,
         exit(1);
     }
 
-    // printf("\n\n~~~~~~~~~~~~~~~~~~~~~~~~Send IP Header~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    // printIP(ip);
-    // printf("\n\n~~~~~~~~~~~~~~~~~~~~~~~Send ICMP Header~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    // printICMP(icmp);
+    fprintf(file,"\n\n~~~~~~~~~~~~~~~~~~~~~~~~Send IP Header~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    printIP(ip);
+    fprintf(file,"\n\n~~~~~~~~~~~~~~~~~~~~~~~Send ICMP Header~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    printICMP(icmp);
 
     tv->tv_sec = MAXWAIT;
     tv->tv_usec = 0;
@@ -341,10 +390,10 @@ struct icmphdr *send_recv(int sockfd,
         icmp = (struct icmphdr *)(recvbuf + sizeof(struct iphdr));
         char *recv_mssg = (char *)(recvbuf + sizeof(struct iphdr) + sizeof(struct icmphdr));
 
-        // printf("\n\n~~~~~~~~~~~~~~~~~~~~~~~~Recieve IP Header~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-        // printIP(ip);
-        // printf("\n\n~~~~~~~~~~~~~~~~~~~~~~~Recieve ICMP Header~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-        // printICMP(icmp);
+        fprintf(file,"\n\n~~~~~~~~~~~~~~~~~~~~~~~~Recieve IP Header~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+        printIP(ip);
+        fprintf(file,"\n\n~~~~~~~~~~~~~~~~~~~~~~~Recieve ICMP Header~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+        printICMP(icmp);
 
         // printf("recv_mssg: %s\n", recv_mssg);
         *print_flag = 1;

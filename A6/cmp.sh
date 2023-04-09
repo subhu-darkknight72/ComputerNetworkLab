@@ -1,2 +1,2 @@
-sudo gcc -o ass ass6_org.c 
+sudo gcc -o ass ass6.c 
 sudo ./ass iitkgp.ac.in
