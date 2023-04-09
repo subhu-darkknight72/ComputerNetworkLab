@@ -53,6 +53,8 @@ clean:
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <errno.h>
+#include <linux/tcp.h>
+#include <linux/udp.h>
 
 #include <sys/select.h>
 #include <sys/time.h>
@@ -338,6 +340,29 @@ void printICMP(struct icmphdr *icmp)
     if (icmp->type == ICMP_ECHO || icmp->type == ICMP_ECHOREPLY)
         fprintf(file, "|       Identifier:%-6d       |      SequenceNumber:%-6d    |\n", icmp->un.echo.id, icmp->un.echo.sequence);
     fprintf(file, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+}
+
+void printTCP(const struct tcphdr *tcp)
+{
+    fprintf(file, "-----------------------------------------------------------------\n");
+    fprintf(file, "|         source:%-6d         |          dest:%-6d          |\n", ntohs(tcp->source), ntohs(tcp->dest));
+    fprintf(file, "-----------------------------------------------------------------\n");
+    fprintf(file, "|                       sequence:%-8d                       |\n", tcp->seq);
+    fprintf(file, "|                         ack:%-8d                          |\n", tcp->ack_seq);
+    fprintf(file, "-----------------------------------------------------------------\n");
+    fprintf(file, "| hlen:%-4d|reserved|%d|%d|%d|%d|%d|%d|          rwnd:%-6d          |\n", tcp->doff, tcp->urg, tcp->ack, tcp->psh, tcp->rst, tcp->syn, tcp->fin, tcp->window);
+    fprintf(file, "-----------------------------------------------------------------\n");
+    fprintf(file, "|          check:%-6d         |         urgptr:%-6d         |\n", tcp->check, tcp->urg_ptr);
+    fprintf(file, "-----------------------------------------------------------------file");
+}
+
+void printUDP(const struct udphdr *udp)
+{
+    fprintf(file, "-----------------------------------------------------------------\n");
+    fprintf(file, "|         source:%-6d         |          dest:%-6d          |\n", ntohs(udp->source), ntohs(udp->dest));
+    fprintf(file, "-----------------------------------------------------------------\n");
+    fprintf(file, "|           len:%-6d          |          check:%-6d         |\n", ntohs(udp->len), udp->check);
+    fprintf(file, "-----------------------------------------------------------------\n");
 }
 
 struct iphdr *createIPHeader(char *mssg, char *sendbuf, int ttl, struct sockaddr_in *dest)
