@@ -2,7 +2,7 @@
 // 20CS10064: Subhajyoti Halder
 
 // compile: gcc -o pingnetinfo pingnetinfo.c
-// run: sudo ./pingnetinfo iitkgp.ac.in
+// run: sudo ./pingnetinfo iitkgp.ac.in 5 1
 
 #include <stdio.h>
 #include <stdlib.h>
