@@ -83,10 +83,11 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    if (argc >= 3){
+    if (argc >= 3)
         iter_count = atoi(argv[2]);
+    if (argc >= 4)
         T = atoi(argv[3]);
-    }
+    
 
     if ((hp = gethostbyname(argv[1])) == NULL)
     {
