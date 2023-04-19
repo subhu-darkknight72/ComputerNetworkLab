@@ -75,11 +75,11 @@ void *recv_thread(void *arg)
             n = recv(sockfd, mssg+total_recv, len-total_recv, 0);
             if(n<0){
                 perror("recv");
-                pthread_exit(NULL);
+                pthread_exit(0);
             }
             if(n==0){
                 printf("server closed\n");
-                pthread_exit(NULL);
+                pthread_exit(0);
             }
             total_recv += n;
         }
@@ -132,12 +132,12 @@ void *send_thread(void *arg)
             // printf("send %d bytes\n", n);
             if(n<0){
                 perror("send");
-                // pthread_exit(NULL);
+                // pthread_exit(0);
                 exit(1);
             }
             if(n==0){
                 printf("server closed\n");
-                // pthread_exit(NULL);
+                // pthread_exit(0);
                 exit(1);
             }
             total_sent += n;
@@ -174,8 +174,8 @@ int my_socket(int domain, int type, int protocol)
     cond1=(pthread_cond_t)PTHREAD_COND_INITIALIZER;
 
     // create threads for send and recv and join them
-    pthread_create(&R, NULL, recv_thread, NULL);
-    pthread_create(&S, NULL, send_thread, NULL);
+    pthread_create(&R, 0, recv_thread, 0);
+    pthread_create(&S, 0, send_thread, 0);
 
     printf("my_socket: sockfd=%d\n", sockfd);
     return sockfd;
@@ -203,7 +203,7 @@ int my_send(int sockfd_id, const void *buf, size_t len, int flags)
     pthread_cond_signal(&cond_empty_smt);
     return len;
 }
-ssize_t my_recv(int sockfd_id, void *buf_in, size_t len_in, int flags)
+int my_recv(int sockfd_id, void *buf_in, size_t len_in, int flags)
 {
     char *buf = (char *)buf_in;
     pthread_mutex_lock(&recvLock);
@@ -233,8 +233,8 @@ int my_close(int sockfd)
     pthread_cancel(R);
     pthread_cancel(S);
 
-    pthread_join(R, NULL);
-    pthread_join(S, NULL);
+    pthread_join(R, 0);
+    pthread_join(S, 0);
 
     // destroy the mssg_table
     free(smt);

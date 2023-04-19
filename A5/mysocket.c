@@ -203,7 +203,7 @@ int my_send(int sockfd_id, const void *buf, size_t len, int flags)
     pthread_cond_signal(&cond_empty_smt);
     return len;
 }
-ssize_t my_recv(int sockfd_id, void *buf_in, size_t len_in, int flags)
+int my_recv(int sockfd_id, void *buf_in, size_t len_in, int flags)
 {
     char *buf = (char *)buf_in;
     pthread_mutex_lock(&recvLock);

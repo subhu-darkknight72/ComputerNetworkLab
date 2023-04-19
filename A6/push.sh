@@ -1,3 +1,3 @@
 git add -A
-git commit -m "SH forever"
+git commit -m "Update"
 git push

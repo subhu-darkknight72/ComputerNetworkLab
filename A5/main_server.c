@@ -46,6 +46,10 @@ int main()
 	memset(buf, 0, BUF_S);
 	strcpy(buf, "Message from server 1");
 	my_send(newsockfd, buf, strlen(buf) + 1, 0);
+
+	// send int to client
+	int num = 123;
+	my_send(newsockfd, &num, sizeof(int), 0);
 	
 	memset(buf, 0, BUF_S);
 	my_recv(newsockfd, buf, BUF_S, 0);
@@ -103,10 +107,6 @@ int main()
 	strcpy(buf, "Message from server 11111111");
 	my_send(newsockfd, buf, strlen(buf) + 1, 0);
 	
-	memset(buf, 0, BUF_S);
-	my_recv(newsockfd, buf, BUF_S, 0);
-	printf("%s\n", buf);
-
 	memset(buf, 0, BUF_S);
 	my_recv(newsockfd, buf, BUF_S, 0);
 	printf("%s\n", buf);
