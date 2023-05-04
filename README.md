@@ -18,8 +18,7 @@
 - **Question 1:** A simplified <code>TCP concurrent HTTP client</code> and server that supports basic HTTP commands GET and PUT for downloading and uploading html, text, and pdf files. The client opens a TCP connection with the HTTP server and retrieves the document from the HTTP server upon receiving a GET command. The server listens for incoming requests and responds to them.
 
 ## Assignment 5 : Message Oriented TCP
-- **Question 1:** A <code>UDP client-server</code> system to make the time server. However, the client uses the poll() function to wait for 3 seconds to receive on the UDP socket with timeout, else exits with “Timeout exceeded” message.
-- **Question 2:** The client interacts with the <code>concurrent TCP server</code> using a communication protocol: LOGIN, run valid shell commands on the server system, and display the output on the screen. Connection terminates when the client sends the command “quit” to the server.
+- **Question 1:** A message-oriented TCP protocol (called MyTCP) using standard TCP connection as a layer of software between the MyTCP calls and the TCP socket calls, to guarantee that anything sent with a single send call is received by a single receive call, similar to UDP but reliable and in FIFO order like TCP.
 
 <!-- .
 ## Instruction
