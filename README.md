@@ -18,7 +18,10 @@
 - **Question 1:** A simplified <code>TCP concurrent HTTP client</code> and server that supports basic HTTP commands GET and PUT for downloading and uploading html, text, and pdf files. The client opens a TCP connection with the HTTP server and retrieves the document from the HTTP server upon receiving a GET command. The server listens for incoming requests and responds to them.
 
 ## Assignment 5 : Message Oriented TCP
-- **Question 1:** A message-oriented TCP protocol (called MyTCP) using standard TCP connection as a layer of software between the MyTCP calls and the TCP socket calls, to guarantee that anything sent with a single send call is received by a single receive call, similar to UDP but reliable and in FIFO order like TCP.
+- **Question 1:** A <code>message-oriented TCP protocol</code> (called MyTCP) using standard TCP connection as a layer of software between the MyTCP calls and the TCP socket calls, to guarantee that anything sent with a single send call is received by a single receive call, similar to UDP but reliable and in FIFO order like TCP.
+
+## Assignment 6 : Raw Sockets
+- **Question 1:** A program called <code>PingNetInfo</code> that takes a website address and estimates the latency and bandwidth of each link in the path, by probing with ICMP packets. The program uses the same concept as traceroute to find each link in the path and estimate the latency and bandwidth of each link. The program handles various possibilities such as packet drops, requests arriving out of order, and intermediate servers not responding to pings.
 
 <!-- .
 ## Instruction
