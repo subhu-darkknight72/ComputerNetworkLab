@@ -9,7 +9,7 @@
 
 ## Assignment 2
 - **Question 1:** A UDP client-server system to make the time server. However, the client uses the poll() function to wait for 3 seconds to receive on the UDP socket with timeout, else exits with “Timeout exceeded” message.
-- **Question 2:** The client and the server interacts using a communication protocol: LOGIN, run valid shell commands on the server, and display the output on the screen. Connection terminates when the client sends the command “quit” to the server.
+- **Question 2:** The client and the server interacts using a communication protocol: LOGIN, run valid shell commands on the server system, and display the output on the screen. Connection terminates when the client sends the command “quit” to the server.
 
 
 
