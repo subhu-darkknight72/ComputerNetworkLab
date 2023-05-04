@@ -4,7 +4,7 @@
 - 20CS10064: Subhajyoti Halder
 
 ## Assignment 1
-- **Question 1:** Write a TCP iterative server to allow client programs to get the system date and time from the server. When a client connects to the server, the server gets the local time on the machine and sends it to the client. The client displays the date and time on the screen, and terminates. The server should be an iterative server.
+- **Question 1:** Write a TCP iterative server to allow client programs to get the system date and time from the server. The client displays the date and time on the screen, and terminates.
 - **Question 2:** Write a simple TCP iterative server and client to evaluate arithmetic expressions
 
 
